@@ -53,7 +53,7 @@ function chipOf(key: string): Decoration | null {
   const group = groupOf(parts.project, parts.groupId);
   return {
     key: `error:${key}`,
-    icon: "cloud",
+    icon: "google-cloud",
     label: `Error group · ${parts.project}`,
     tone: "info",
     details: [group?.title ?? `Error group ${parts.groupId}`],
