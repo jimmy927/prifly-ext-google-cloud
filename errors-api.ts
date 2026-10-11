@@ -103,7 +103,8 @@ const TWO_MINUTES = 2 * 60_000;
 
 /** The Logging filter for WARNING and worse within two minutes of the event. */
 export function logFilter(eventTime: string, service: string): string {
-  const at = new Date(eventTime).getTime();
+  const parsed = new Date(eventTime).getTime();
+  const at = Number.isNaN(parsed) ? Date.now() : parsed;
   const from = new Date(at - TWO_MINUTES).toISOString();
   const to = new Date(at + TWO_MINUTES).toISOString();
   const base = `severity>=WARNING AND timestamp>="${from}" AND timestamp<="${to}"`;

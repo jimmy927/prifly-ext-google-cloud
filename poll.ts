@@ -150,7 +150,11 @@ function take(state: State, project: string, answer: Result<ErrorGroup[]>): numb
     // What was read before stays on the board; a first read has nothing to keep.
     if (state.reads.has(project)) return 0;
   }
-  state.reads.set(project, { groups: [], failure: sayFailure(answer) });
+  // A failed read keeps the groups of the last good one, beside the failure.
+  state.reads.set(project, {
+    groups: state.reads.get(project)?.groups ?? [],
+    failure: sayFailure(answer),
+  });
   return 0;
 }
 

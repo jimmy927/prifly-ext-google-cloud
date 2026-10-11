@@ -143,9 +143,9 @@ async function launchGroup(api: HostApi, project: string, groupId: string): Prom
   const files = { events: join(folder, "events.json"), logs: join(folder, "logs.json") };
   try {
     mkdirSync(folder, { recursive: true });
-    writeFileSync(files.events, `${JSON.stringify(events.ok, null, 2)}\n`);
+    writeFileSync(files.events, `${JSON.stringify(events.ok, null, 2)}\n`, { mode: 0o600 });
     const saved = "ok" in logs ? logs.ok : { error: sayFailure(logs) };
-    writeFileSync(files.logs, `${JSON.stringify(saved, null, 2)}\n`);
+    writeFileSync(files.logs, `${JSON.stringify(saved, null, 2)}\n`, { mode: 0o600 });
   } catch (error) {
     return NOTHING_HERE(`Could not save the event files: ${String(error)}`);
   }

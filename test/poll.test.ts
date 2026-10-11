@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { boardOf } from "../board";
 import { startPoller } from "../poll";
 import { MINUTE, makeWorld, stat, type World } from "./board-world";
@@ -134,7 +134,20 @@ describe("the poller", () => {
 
   test("the default timer is a real interval that stop clears", () => {
     world = makeWorld({ chosen: [] });
-    const stop = startPoller(world.api);
-    stop();
+    const set = spyOn(globalThis, "setInterval").mockReturnValue(
+      7 as unknown as ReturnType<typeof setInterval>,
+    );
+    const clear = spyOn(globalThis, "clearInterval").mockImplementation(() => undefined);
+    try {
+      const stop = startPoller(world.api);
+      expect(set).toHaveBeenCalledTimes(1);
+      expect(set.mock.calls[0]?.[1]).toBe(5 * MINUTE);
+      expect(clear).not.toHaveBeenCalled();
+      stop();
+      expect(clear).toHaveBeenCalledWith(7);
+    } finally {
+      set.mockRestore();
+      clear.mockRestore();
+    }
   });
 });
