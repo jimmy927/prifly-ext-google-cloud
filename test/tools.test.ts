@@ -133,13 +133,16 @@ describe("gcloud_logs", () => {
         answer: () => json({ entries: [{ severity: "INFO", jsonPayload: { message: "hello" } }] }),
       },
     ]);
-    const text = await fake.callTool("gcloud_logs", { project: "other", filter: "severity>=INFO" });
+    const text = await fake.callTool("gcloud_logs", {
+      project: "other-proj",
+      filter: "severity>=INFO",
+    });
     expect(text).toContain("INFO | hello");
     const body = (await connections.requests[0]?.json()) as Record<string, unknown>;
-    expect(body["resourceNames"]).toEqual(["projects/other"]);
+    expect(body["resourceNames"]).toEqual(["projects/other-proj"]);
     expect(body["filter"]).toBe("severity>=INFO");
     expect(body["pageSize"]).toBe(50);
-    expect(connections.options[0]?.project).toBe("other");
+    expect(connections.options[0]?.project).toBe("other-proj");
   });
 
   const many = Array.from({ length: 100 }, (_, index) => ({
@@ -172,6 +175,35 @@ describe("gcloud_logs", () => {
     const text = await fake.callTool("gcloud_logs", {});
     expect(text).toContain("60 more entries cut");
     expect(text).toContain("no scratchpad");
+  });
+
+  test("a project that is not a project id is refused before any request", async () => {
+    const { fake, connections } = setup([
+      { method: "POST", url: /entries:list/, answer: () => json({}) },
+    ]);
+    const text = await fake.callTool("gcloud_logs", { project: "../x" });
+    expect(text).toContain("not a Google Cloud project id");
+    expect(connections.requests).toHaveLength(0);
+  });
+
+  test("scratchpad note comes before the more-entries hint, which follows the limit", async () => {
+    const scratchpad = temp();
+    const { fake } = setup(
+      [
+        {
+          method: "POST",
+          url: /entries:list/,
+          answer: () => json({ entries: many, nextPageToken: "t" }),
+        },
+      ],
+      { scratchpad },
+    );
+    const text = await fake.callTool("gcloud_logs", { limit: 200 });
+    expect(text.indexOf("are in ")).toBeGreaterThan(-1);
+    expect(text.indexOf("are in ")).toBeLessThan(text.indexOf("More entries match"));
+    expect(text).toMatch(/More entries match; narrow the filter\./);
+    const lower = await fake.callTool("gcloud_logs", { limit: 100 });
+    expect(lower).toContain("raise limit or narrow the filter");
   });
 
   test("no matches is said plainly", async () => {
@@ -411,8 +443,10 @@ describe("no default project", () => {
       [{ url: /billingInfo/, answer: () => json({ billingEnabled: false }) }],
       { defaultProject: undefined },
     );
-    expect(await fake.callTool("gcloud_billing", { project: "solo" })).toContain("Project solo");
-    expect(connections.options[0]?.project).toBe("solo");
+    expect(await fake.callTool("gcloud_billing", { project: "solo-proj" })).toContain(
+      "Project solo-proj",
+    );
+    expect(connections.options[0]?.project).toBe("solo-proj");
     expect(existsSync(join(fake.api.folder, "state.json"))).toBe(false);
   });
 });

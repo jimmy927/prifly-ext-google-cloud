@@ -13,6 +13,12 @@ import { readChosen } from "./settings";
 export const NO_PROJECT =
   "No project given and no default project chosen: pass `project`, or the reader picks a default in the Google Cloud panel.";
 
+/** A Google project id, legacy domain-scoped ids included. */
+const PROJECT_ID = /^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
+export const NOT_A_PROJECT_ID =
+  "That `project` is not a Google Cloud project id (lower-case letters, digits and hyphens, 6-30 characters).";
+
 /** What a tool body gets once the reader is signed in and a project is known. */
 export type Ready = {
   api: HostApi;
@@ -43,6 +49,16 @@ export function stringArg(args: Record<string, unknown>, key: string): string | 
   return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
+/** The project to read (argument, else the reader's default), or why none. */
+function projectOf(
+  api: HostApi,
+  args: Record<string, unknown>,
+): { id: string } | { refusal: string } {
+  const id = stringArg(args, "project") ?? readChosen(api.folder).defaultProject;
+  if (id === undefined || id === "") return { refusal: NO_PROJECT };
+  return PROJECT_ID.test(id) ? { id } : { refusal: NOT_A_PROJECT_ID };
+}
+
 export function makeTool(apiOf: () => HostApi | null, spec: ToolSpec): ExtensionTool {
   return {
     name: spec.name,
@@ -61,12 +77,10 @@ export function makeTool(apiOf: () => HostApi | null, spec: ToolSpec): Extension
       const refusal = sayStanding(state);
       if (refusal !== null) return refusal;
       if (state.kind !== "ok" || api.connections === undefined) return "No Google connection.";
-      const project = spec.perProject
-        ? (stringArg(args, "project") ?? readChosen(api.folder).defaultProject)
-        : "";
-      if (spec.perProject && project === "") return NO_PROJECT;
+      const project = spec.perProject ? projectOf(api, args) : { id: "" };
+      if ("refusal" in project) return project.refusal;
       const ready = { api, connections: api.connections, connection: state.connection.id };
-      return await spec.run({ ...ready, project, ctx }, args);
+      return await spec.run({ ...ready, project: project.id, ctx }, args);
     },
   };
 }

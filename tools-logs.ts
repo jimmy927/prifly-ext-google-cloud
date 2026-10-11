@@ -87,7 +87,10 @@ function describeEntries(entries: LogEntry[], ready: Ready, now: number): string
   }
   mkdirSync(scratchpad, { recursive: true });
   const stamp = new Date(now).toISOString().replace(/[:.]/g, "-");
-  const file = join(scratchpad, `gcloud-logs-${ready.project}-${stamp}.json`);
+  const file = join(
+    scratchpad,
+    `gcloud-logs-${ready.project.replace(/[^a-z0-9-]/g, "")}-${stamp}.json`,
+  );
   writeFileSync(file, JSON.stringify(entries, null, 2));
   return `${head}\n(${cut} more entries cut: all ${lines.length} are in ${file})`;
 }
@@ -109,9 +112,9 @@ async function runLogs(ready: Ready, args: Record<string, unknown>): Promise<str
   if ("sentence" in answer) return answer.sentence;
   const entries = answer.value.entries ?? [];
   if (entries.length === 0) return `No log entries in ${ready.project} match: ${filter}`;
-  const more = answer.value.nextPageToken
-    ? "\n(More entries match; raise limit or narrow the filter.)"
-    : "";
+  const pageSize = limitOf(args["limit"]);
+  const advice = pageSize >= MAX_LIMIT ? "narrow the filter" : "raise limit or narrow the filter";
+  const more = answer.value.nextPageToken ? `\n(More entries match; ${advice}.)` : "";
   return `${describeEntries(entries, ready, now)}${more}`;
 }
 
