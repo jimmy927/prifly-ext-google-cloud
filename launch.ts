@@ -28,6 +28,7 @@ export async function launchOf(
   _how: { again: boolean },
 ): Promise<Launch> {
   if (key.startsWith("setup:")) return await setupOf(api, key);
+  if (key.startsWith("reading:")) return NOTHING_HERE("Still reading that project.");
   if (key.startsWith("failed:")) {
     return NOTHING_HERE(readOf(key.slice("failed:".length))?.failure ?? "That read failed.");
   }
@@ -54,6 +55,7 @@ async function setupOf(api: HostApi, key: string): Promise<Launch> {
     await projectsRead();
     return NOTHING_HERE("Your projects are listed.");
   }
+  if (key === "setup:failed") return NOTHING_HERE("Pick Try again to read your projects again.");
   if (key === "setup:reload") {
     forgetProjects();
     return NOTHING_HERE("Reading your projects again…");

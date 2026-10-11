@@ -10,7 +10,7 @@ import type { LogEntry, RawEvent, RawStat } from "../errors-api";
 import { forgetProjects } from "../errors-projects";
 import type { HostApi } from "../host";
 import type { PollerEnv } from "../poll";
-import { refreshNow, startPoller } from "../poll";
+import { settled, startPoller } from "../poll";
 import { type FakeApi, type FakeConnections, fakeApi, fakeConnections } from "./fake-api";
 import { CLOUD_ACCOUNT, fakeGoogle, json, type Route } from "./google-fake";
 
@@ -18,7 +18,10 @@ export const NOW = Date.parse("2026-10-11T12:00:00Z");
 export const MINUTE = 60_000;
 
 /** What the fake answers for one project's groupStats, by period; or a whole response. */
-export type Stats = { day: RawStat[]; hour?: RawStat[]; week?: RawStat[] } | (() => Response);
+export type Stats =
+  | { day: RawStat[]; hour?: RawStat[]; week?: RawStat[] }
+  | { pages: RawStat[][] }
+  | (() => Response);
 
 export type World = {
   folder: string;
@@ -73,6 +76,16 @@ function periodOf(url: string): "hour" | "day" | "week" {
   return url.includes("PERIOD_1_WEEK") ? "week" : "day";
 }
 
+/** One page of a paged groupStats answer; the token is `p<index>`. */
+function pageOf(pages: RawStat[][], url: string): Response {
+  const token = new URL(url).searchParams.get("pageToken");
+  const index = token === null ? 0 : Number(token.slice(1));
+  return json({
+    errorGroupStats: pages[index] ?? [],
+    ...(index + 1 < pages.length ? { nextPageToken: `p${index + 1}` } : {}),
+  });
+}
+
 export function makeWorld(
   options: { accounts?: (typeof CLOUD_ACCOUNT)[]; projects?: string[]; chosen?: string[] } = {},
 ): World {
@@ -93,6 +106,7 @@ export function makeWorld(
         const answer = built.stats[match[1] ?? ""];
         if (answer === undefined) return json({});
         if (typeof answer === "function") return answer();
+        if ("pages" in answer) return pageOf(answer.pages, request.url);
         const period = periodOf(request.url);
         return json({ errorGroupStats: answer[period] ?? (period === "day" ? answer.day : []) });
       },
@@ -156,11 +170,11 @@ export function makeWorld(
     tick: async (ms = 5 * MINUTE) => {
       built.now += ms;
       fire();
-      await refreshNow();
+      await settled();
     },
     start: async () => {
       stopPoller = startPoller(api, env);
-      await refreshNow();
+      await settled();
     },
     stop: () => {
       stopPoller();

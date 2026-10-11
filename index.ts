@@ -8,6 +8,7 @@
 
 import type { Launch, LaunchBoard, LaunchChoice, PanelRequest } from "@prifly/extension-api";
 import { boardOf } from "./board";
+import { restoreChips } from "./errors-launched";
 import type { HostApi } from "./host";
 import { launchedOf, launchOf } from "./launch";
 import { panelAnswer } from "./panel-api";
@@ -25,6 +26,7 @@ export function activate(given: HostApi): () => void {
   api = given;
   given.tools?.register(cloudTools(() => api));
   const stopPolling = startPoller(given);
+  restoreChips(given);
   given.log("activated", {});
   return () => {
     stopPolling();

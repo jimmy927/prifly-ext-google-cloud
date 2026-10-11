@@ -5,7 +5,7 @@
  */
 
 import type { ExtensionConnectionsApi } from "@prifly/extension-api";
-import { gfetch, type Result } from "./google";
+import { allPages, gfetch, type Result } from "./google";
 
 export type PeriodName = "1h" | "24h" | "7d";
 
@@ -63,6 +63,11 @@ export type LogEntry = {
   resource?: { type?: string; labels?: Record<string, string> };
 };
 
+type StatsPage = { errorGroupStats?: RawStat[]; nextPageToken?: string };
+
+/** At most this many pages of 50 groups per read. */
+const STATS_PAGES = 4;
+
 const BASE = "https://clouderrorreporting.googleapis.com/v1beta1/projects";
 const ENTRIES = "https://logging.googleapis.com/v2/entries:list";
 
@@ -78,11 +83,15 @@ export async function readStats(
     "order=LAST_SEEN_DESC",
     "pageSize=50",
   ].join("&");
-  const url = `${BASE}/${encodeURIComponent(project)}/groupStats?${query}`;
-  const answer = await gfetch<{ errorGroupStats?: RawStat[] }>(connections, connection, url, {
-    project,
-  });
-  return "ok" in answer ? { ok: answer.ok.errorGroupStats ?? [] } : answer;
+  const base = `${BASE}/${encodeURIComponent(project)}/groupStats?${query}`;
+  return await allPages(
+    (token) => {
+      const url = token === undefined ? base : `${base}&pageToken=${encodeURIComponent(token)}`;
+      return gfetch<StatsPage>(connections, connection, url, { project });
+    },
+    (page: StatsPage) => page.errorGroupStats,
+    STATS_PAGES,
+  );
 }
 
 export async function readEvents(

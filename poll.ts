@@ -44,6 +44,8 @@ type State = {
   /** Not before this (ms) is a rate-limited project read again. */
   retryAt: Map<string, number>;
   running: Promise<void> | null;
+  /** A read was asked for during a round: the round runs once more when it ends. */
+  pending: boolean;
   flagged: boolean;
 };
 
@@ -76,7 +78,12 @@ export function clearFlag(api: HostApi): void {
 
 /** Read now, e.g. for a project the reader just added. */
 export function refreshNow(): Promise<void> {
-  return current === null ? Promise.resolve() : round(current);
+  return current === null ? Promise.resolve() : round(current, true);
+}
+
+/** Resolves when the round now running (if any) has ended. */
+export function settled(): Promise<void> {
+  return current?.running ?? Promise.resolve();
 }
 
 export function startPoller(api: HostApi, env: PollerEnv = REAL): () => void {
@@ -87,6 +94,7 @@ export function startPoller(api: HostApi, env: PollerEnv = REAL): () => void {
     seen: new Map(),
     retryAt: new Map(),
     running: null,
+    pending: false,
     flagged: false,
   };
   current = state;
@@ -100,15 +108,26 @@ export function startPoller(api: HostApi, env: PollerEnv = REAL): () => void {
   };
 }
 
-function round(state: State): Promise<void> {
-  if (state.running !== null) return state.running;
-  const running = readAll(state)
+function round(state: State, again = false): Promise<void> {
+  if (state.running !== null) {
+    if (again) state.pending = true;
+    return state.running;
+  }
+  const running = readRounds(state)
     .catch((error: unknown) => state.api.log("poll-failed", { message: String(error) }))
     .finally(() => {
       state.running = null;
     });
   state.running = running;
   return running;
+}
+
+/** One round, and another for as long as a read was asked for while it ran. */
+async function readRounds(state: State): Promise<void> {
+  do {
+    state.pending = false;
+    await readAll(state);
+  } while (state.pending && current === state);
 }
 
 async function readAll(state: State): Promise<void> {

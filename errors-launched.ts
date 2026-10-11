@@ -61,10 +61,8 @@ function chipOf(key: string): Decoration | null {
   };
 }
 
-/** Remember the launch and give every launched session still in the sidebar its chip. */
-export function recordLaunch(api: HostApi, key: string, sessionId: string): void {
-  const launched = { ...readLaunched(api.folder), [key]: sessionId };
-  writeLaunched(api.folder, launched);
+/** Give every launched session still in the sidebar its chip. */
+export function showChips(api: HostApi, launched: Launched): void {
   const alive = new Set(api.sessions().map((each) => each.id));
   const bySession: Record<string, Decoration[]> = {};
   for (const [card, session] of Object.entries(launched)) {
@@ -73,4 +71,16 @@ export function recordLaunch(api: HostApi, key: string, sessionId: string): void
     if (chip !== null) bySession[session] = [...(bySession[session] ?? []), chip];
   }
   api.show(bySession, []);
+}
+
+/** Remember the launch and give every launched session still in the sidebar its chip. */
+export function recordLaunch(api: HostApi, key: string, sessionId: string): void {
+  const launched = { ...readLaunched(api.folder), [key]: sessionId };
+  writeLaunched(api.folder, launched);
+  showChips(api, launched);
+}
+
+/** After a restart: the chips of the sessions `launched.json` remembers. */
+export function restoreChips(api: HostApi): void {
+  showChips(api, readLaunched(api.folder));
 }

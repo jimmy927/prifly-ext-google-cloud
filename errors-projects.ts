@@ -6,7 +6,7 @@
  */
 
 import type { LaunchChoice } from "@prifly/extension-api";
-import { sayFailure } from "./google";
+import { type Result, sayFailure } from "./google";
 import type { HostApi } from "./host";
 import { listProjects, type Project } from "./projects";
 
@@ -25,12 +25,17 @@ function listingOf(api: HostApi, connection: string): Listing {
   const reading: Listing = {
     kind: "reading",
     connection,
-    done: listProjects(connections, connection).then((answer) => {
-      listing =
-        "ok" in answer
-          ? { kind: "done", connection, projects: answer.ok }
-          : { kind: "failed", connection, message: sayFailure(answer) };
-    }),
+    done: listProjects(connections, connection)
+      .catch((error: unknown): Result<Project[]> => {
+        api.log("projects-failed", { message: String(error) });
+        return { failed: { status: 0, message: String(error) } };
+      })
+      .then((answer) => {
+        listing =
+          "ok" in answer
+            ? { kind: "done", connection, projects: answer.ok }
+            : { kind: "failed", connection, message: sayFailure(answer) };
+      }),
   };
   listing = reading;
   return reading;
@@ -59,7 +64,8 @@ export function projectRows(api: HostApi, connection: string, chosen: string[]):
   }
   if (found.kind === "failed") {
     return [
-      { key: "setup:reload", title: found.message, detail: "Click to try again", tone: "warning" },
+      { key: "setup:failed", title: found.message, tone: "warning" },
+      { key: "setup:reload", title: "Try again", tone: "info" },
     ];
   }
   const known = new Set(found.projects.map((each) => each.id));

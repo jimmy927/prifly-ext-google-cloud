@@ -77,7 +77,15 @@ function itemsOf(folder: string, projects: string[]): LaunchChoice[] {
   const items: LaunchChoice[] = [];
   for (const project of projects) {
     const read = readOf(project);
-    if (read === undefined) continue;
+    if (read === undefined) {
+      items.push({
+        key: `reading:${project}`,
+        title: "Reading Error Reporting…",
+        group: project,
+        tone: "muted",
+      });
+      continue;
+    }
     if (read.failure !== null) {
       items.push({
         key: `failed:${project}`,
