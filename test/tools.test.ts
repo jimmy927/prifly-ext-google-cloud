@@ -432,7 +432,7 @@ describe("no default project", () => {
     const { fake, connections } = setup([], { defaultProject: undefined });
     for (const [name] of ALL_TOOLS.filter(([each]) => each !== "gcloud_projects")) {
       expect(await fake.callTool(name, {})).toBe(
-        "No project given and no default project chosen: pass `project`, or the reader picks a default in the Google Cloud panel.",
+        "No project given and no default project chosen: pass `project`, or the reader picks a default on the Google Cloud board.",
       );
     }
     expect(connections.requests).toHaveLength(0);

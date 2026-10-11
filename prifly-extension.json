@@ -21,16 +21,6 @@
       "searchPlaceholder": "Filter by message, service, project or group id…"
     }
   ],
-  "panels": [
-    {
-      "id": "cloud",
-      "label": "Google Cloud",
-      "icon": "google-cloud",
-      "description": "Your Google account for Cloud, and which projects the board and the tools use",
-      "folder": "panel",
-      "page": "index.html"
-    }
-  ],
   "settings": [
     {
       "id": "pollMinutes",

@@ -5,6 +5,7 @@
  */
 
 import type { LaunchBoard, LaunchChoice } from "@prifly/extension-api";
+import { apisOf } from "./errors-apis";
 import { ago, consoleUrl, countIn, type ErrorGroup, sparksOf, toneOf } from "./errors-group";
 import { readLaunched } from "./errors-launched";
 import { projectRows } from "./errors-projects";
@@ -71,11 +72,35 @@ function matches(item: LaunchChoice, query: string): boolean {
   );
 }
 
-function itemsOf(folder: string, projects: string[]): LaunchChoice[] {
+/** The row for the APIs of one project that are off, or that could not be checked; none when all are on. */
+function apisRow(api: HostApi, connection: string, project: string): LaunchChoice[] {
+  const found = apisOf(api, connection, project);
+  if (found === null) {
+    return [{ key: `apis:${project}`, title: "Checking the APIs…", group: project, tone: "muted" }];
+  }
+  if ("failure" in found) {
+    return [{ key: `apis:${project}`, title: found.failure, group: project, tone: "warning" }];
+  }
+  const [first] = found;
+  if (first === undefined) return [];
+  return [
+    {
+      key: `apis:${project}`,
+      title: `Not enabled: ${found.map((each) => each.title).join(", ")}`,
+      group: project,
+      detail: "Switch them on so the board and the tools can read this project",
+      tone: "warning",
+      url: first.enableUrl,
+    },
+  ];
+}
+
+function itemsOf(api: HostApi, connection: string, projects: string[]): LaunchChoice[] {
   const now = nowMs();
-  const launched = readLaunched(folder);
+  const launched = readLaunched(api.folder);
   const items: LaunchChoice[] = [];
   for (const project of projects) {
+    items.push(...apisRow(api, connection, project));
     const read = readOf(project);
     if (read === undefined) {
       items.push({
@@ -106,7 +131,7 @@ export function boardOf(api: HostApi, query: string): LaunchBoard | LaunchChoice
   const where = standing(api.connections);
   if (where.kind !== "ok") return setupRows(where);
   const wanted = query.trim().toLowerCase();
-  const projects = readChosen(api.folder).projects;
+  const { projects, defaultProject } = readChosen(api.folder);
   if (projects.length === 0 || choosing) {
     return projectRows(api, where.connection.id, projects).filter((row) => matches(row, wanted));
   }
@@ -114,10 +139,20 @@ export function boardOf(api: HostApi, query: string): LaunchBoard | LaunchChoice
   if (!hasRead()) return [{ key: "loading", title: "Reading Error Reporting…", tone: "muted" }];
   return {
     columns: projects.map((project) => ({ id: project, name: project })),
-    items: itemsOf(api.folder, projects).filter((item) => matches(item, wanted)),
+    items: itemsOf(api, where.connection.id, projects).filter((item) => matches(item, wanted)),
     actions: [
       { key: "setup:projects", title: "Choose projects…" },
-      { key: "info:account", title: `Reading as ${where.connection.account}`, tone: "muted" },
+      {
+        key: "info:account",
+        title: `Reading as ${where.connection.account}`,
+        detail: [
+          `Client ${where.connection.client}`,
+          defaultProject === "" ? "" : `default project ${defaultProject}`,
+        ]
+          .filter((part) => part !== "")
+          .join(" · "),
+        tone: "muted",
+      },
     ],
   };
 }

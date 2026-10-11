@@ -32,6 +32,8 @@ export async function launchOf(
   if (key.startsWith("failed:")) {
     return NOTHING_HERE(readOf(key.slice("failed:".length))?.failure ?? "That read failed.");
   }
+  if (key.startsWith("apis:"))
+    return NOTHING_HERE("Open the link on the card to switch the APIs on.");
   const parts = splitKey(key);
   if (parts === null) return { prompt: "" };
   return await launchGroup(api, parts.project, parts.groupId);

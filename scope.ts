@@ -8,8 +8,8 @@
  * refusal, the extension asks for `cloud-platform`; it still changes nothing,
  * since v1 has no write tools.
  *
- * The scope is asked for only from a click — the panel's "Allow Google Cloud"
- * or the board's row — as incremental consent on an account the reader
+ * The scope is asked for only from a click — the board's "Allow Google Cloud"
+ * row — as incremental consent on an account the reader
  * already connected, never from a tool call a session makes.
  */
 
@@ -17,7 +17,7 @@ import type { ExtensionConnection, ExtensionConnectionsApi } from "@prifly/exten
 
 export const CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform";
 
-/** Where the reader stands with Google, for the panel, the board and the tools. */
+/** Where the reader stands with Google, for the board and the tools. */
 export type Standing =
   | { kind: "no-api" }
   | { kind: "no-account" }
@@ -51,9 +51,9 @@ export function sayStanding(state: Standing): string | null {
     case "no-api":
       return "This prifly has no Google connections yet: update prifly.";
     case "no-account":
-      return 'No Google account is connected. The reader clicks "Allow Google Cloud" in the Google Cloud panel.';
+      return 'No Google account is connected. The reader clicks "Allow Google Cloud" on the Google Cloud board.';
     case "no-scope":
-      return `${state.connection.account} is connected, but not for Google Cloud. The reader clicks "Allow Google Cloud" in the Google Cloud panel. Do not retry until then.`;
+      return `${state.connection.account} is connected, but not for Google Cloud. The reader clicks "Allow Google Cloud" on the Google Cloud board. Do not retry until then.`;
     case "needs-sign-in":
       return `Needs sign-in: Google ended the grant for ${state.connection.account}. The reader clicks "Sign in again" in prifly. Do not retry until then.`;
   }

@@ -11,7 +11,7 @@ import { sayStanding, standing } from "./scope";
 import { readChosen } from "./settings";
 
 export const NO_PROJECT =
-  "No project given and no default project chosen: pass `project`, or the reader picks a default in the Google Cloud panel.";
+  "No project given and no default project chosen: pass `project`, or the reader picks a default on the Google Cloud board.";
 
 /** A Google project id, legacy domain-scoped ids included. */
 const PROJECT_ID = /^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
@@ -41,7 +41,7 @@ export type ToolSpec = {
 const PROJECT_PROPERTY = {
   type: "string",
   description:
-    "Project id. Left out, the default project the reader chose in the Google Cloud panel.",
+    "Project id. Left out, the default project the reader chose on the Google Cloud board.",
 };
 
 export function stringArg(args: Record<string, unknown>, key: string): string | undefined {

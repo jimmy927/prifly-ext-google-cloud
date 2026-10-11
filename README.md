@@ -1,7 +1,7 @@
 # prifly-ext-template
 
 A minimal prifly extension to start a plugin from: one MCP tool that uses a
-connected account, one launch board, one panel, and tests of each against a
+connected account, one launch board, and tests of each against a
 fake `api`.
 
 ## Start a plugin from it
@@ -56,13 +56,12 @@ file, 120 per function, cognitive complexity 15, no `any`, no `!`).
 
 | File | What it is |
 |---|---|
-| `prifly-extension.json` | The manifest: `connections` (the accounts it uses and why), a `launch`er and a `panel` |
-| `index.ts` | What prifly imports: `activate(api)` registers the tool; `choices`, `launch` and `panel` answer the launcher and the panel |
+| `prifly-extension.json` | The manifest: `connections` (the accounts it uses and why), and a `launch`er |
+| `index.ts` | What prifly imports: `activate(api)` registers the tool; `choices`, `launch` and `launched` answer the launcher |
 | `whoami-tool.ts` | The MCP tool, `mcp__prifly__template_whoami`: calls Microsoft Graph through `api.connections.fetch`, so prifly holds the token |
 | `things.ts` | The board's items and the session a picked one starts |
-| `panel/` | The panel's page; it fetches `api/things`, answered by `panel` in `index.ts` |
 | `test/fake-api.ts` | A fake `api` that records what the extension shows, logs and registers, and a fake `api.connections` over a fake token endpoint — copy it as it is |
-| `test/index.test.ts` | Tests of the tool, the launcher and the panel against the fakes |
+| `test/index.test.ts` | Tests of the tool and the launcher against the fakes |
 
 Import prifly's types with `import type`: they are erased, so the host never
 needs the package to run the extension. Everything added to the api after

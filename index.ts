@@ -1,17 +1,16 @@
 /**
  * The Google Cloud extension: what prifly imports. `activate` registers the
  * read-only `gcloud_*` tools and starts the Error Reporting poller; the other
- * exports answer the launcher `error` (`choices`, `launch`, `launched`) and
- * the panel `cloud` (`panel`). Types come from `@prifly/extension-api` with
- * `import type`, so nothing of it is loaded at run time.
+ * exports answer the launcher `error` (`choices`, `launch`, `launched`); it
+ * puts nothing in the status bar and declares no panel. Types come from
+ * `@prifly/extension-api` with `import type`, so nothing of it is loaded at run time.
  */
 
-import type { Launch, LaunchBoard, LaunchChoice, PanelRequest } from "@prifly/extension-api";
+import type { Launch, LaunchBoard, LaunchChoice } from "@prifly/extension-api";
 import { boardOf } from "./board";
 import { restoreChips } from "./errors-launched";
 import type { HostApi } from "./host";
 import { launchedOf, launchOf } from "./launch";
-import { panelAnswer } from "./panel-api";
 import { startPoller } from "./poll";
 import { cloudTools } from "./tools";
 
@@ -52,9 +51,4 @@ export function launch(
 /** Which session a launch became, so the card tints and the session gets its chip. */
 export function launched(_launchId: string, key: string, sessionId: string): void {
   launchedOf(live(), key, sessionId);
-}
-
-/** What the panel's page asks for at `api/<path>`; answered as JSON. */
-export function panel(_panelId: string, request: PanelRequest): Promise<unknown> {
-  return panelAnswer(live(), request);
 }
