@@ -27,10 +27,13 @@ type Checked =
   | { kind: "failed"; connection: string; at: number; message: string };
 
 const checks = new Map<string, Checked>();
+/** Projects whose settled answer is being read again. */
+const refreshing = new Set<string>();
 
 /** Forget every answer (the tests do, between cases). */
 export function forgetApis(): void {
   checks.clear();
+  refreshing.clear();
 }
 
 type ServicePage = { services?: { name?: string }[]; nextPageToken?: string };
@@ -65,13 +68,20 @@ async function readMissing(
 }
 
 function start(api: HostApi, connection: string, project: string): void {
-  checks.set(project, { kind: "reading", connection });
+  // A refresh keeps the last answer on the card until the new one lands.
+  const before = checks.get(project);
+  if (before === undefined || before.connection !== connection || before.kind === "reading") {
+    checks.set(project, { kind: "reading", connection });
+  } else {
+    refreshing.add(project);
+  }
   void readMissing(api, connection, project)
     .catch((error: unknown): Result<MissingApi[]> => {
       api.log("apis-failed", { project, message: String(error) });
       return { failed: { status: 0, message: String(error) } };
     })
     .then((answer) => {
+      refreshing.delete(project);
       checks.set(
         project,
         "ok" in answer
@@ -88,21 +98,18 @@ export function apisOf(
   project: string,
 ): MissingApi[] | { failure: string } | null {
   const found = checks.get(project);
-  const fresh =
-    found !== undefined &&
-    found.connection === connection &&
-    (found.kind === "reading" || Date.now() - found.at < TTL_MS);
-  if (!fresh) {
+  if (found === undefined || found.connection !== connection) {
     start(api, connection, project);
     return null;
   }
   if (found.kind === "reading") return null;
+  if (Date.now() - found.at >= TTL_MS && !refreshing.has(project)) start(api, connection, project);
   return found.kind === "done" ? found.missing : { failure: found.message };
 }
 
 /** Resolves when every check under way has landed (the tests wait on it). */
 export async function apisRead(): Promise<void> {
-  while ([...checks.values()].some((each) => each.kind === "reading")) {
+  while (refreshing.size > 0 || [...checks.values()].some((each) => each.kind === "reading")) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }

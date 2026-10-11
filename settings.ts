@@ -1,6 +1,6 @@
 /**
  * What the reader chose: the projects the board shows and the default
- * project, picked on the board and kept in `state.json` beside the extension
+ * project (the first chosen unless `state.json` names another), kept in `state.json` beside the extension
  * (the api has no way for an extension to write its own settings), and the
  * poll interval, a setting of the Extensions dialog.
  */

@@ -1,69 +1,30 @@
-# prifly-ext-template
+# prifly-ext-google-cloud
 
-A minimal prifly extension to start a plugin from: one MCP tool that uses a
-connected account, one launch board, and tests of each against a
-fake `api`.
+A prifly extension: your Google Cloud projects, logs, VMs, Cloud Run services
+and error groups, read through prifly's Google connection. Reads only.
 
-## Start a plugin from it
-
-1. Copy the folder to a repository of its own, beside your prifly checkout:
-
-   ```sh
-   cp -r ~/src/prifly/templates/prifly-ext-template ~/src/prifly-ext-<name>
-   cd ~/src/prifly-ext-<name> && git init -b main
-   ```
-
-2. Rename it: `id`, `name` and `description` in `prifly-extension.json`,
-   `name` in `package.json`, and the tool's `template_` prefix in
-   `whoami-tool.ts` (a tool name must be unique across every extension).
-
-3. Get the types. They come from `@prifly/extension-api`, prifly's
-   `packages/extension-api`. Until it is published, link it once per machine
-   from your prifly checkout, then install:
-
-   ```sh
-   (cd ~/src/prifly/packages/extension-api && bun link)
-   bun install
-   ```
-
-   Once it is on npm, replace `"link:@prifly/extension-api"` in
-   `package.json` with its version.
-
-4. Commit `bun.lock`. prifly installs a cloned extension's dependencies
-   itself, with `bun install --frozen-lockfile --production --ignore-scripts`,
-   when it clones it and when an update moves it: what the code imports at
-   run time goes under `dependencies`, tooling under `devDependencies`, and
-   the lock must match `package.json`. Install scripts (`postinstall` and the
-   like, yours and your dependencies') are never run, so pick dependencies
-   that work without them.
-
-5. Try it in prifly: link the folder into the extensions folder and enable it
-   in the Extensions dialog.
-
-   ```sh
-   ln -s ~/src/prifly-ext-<name> ~/.local/share/prifly/extensions/<name>
-   ```
-
-   A linked extension is your own checkout: prifly never updates it or
-   installs into it.
+- Read-only `gcloud_*` MCP tools (`tools*.ts`).
+- One launch board, `error`: a column per chosen project, a card per open
+  Error Reporting group. The board also carries the account it reads as and
+  the default project, a card per project listing the APIs that are not
+  enabled, and, when sign-in or consent is missing, a row that asks for it.
+- No panel and nothing in the status bar: every `api.show` passes `[]`.
 
 ## Checks
 
-`bun test`, `bun run typecheck` and `bun run check` (biome: 500 lines per
-file, 120 per function, cognitive complexity 15, no `any`, no `!`).
+`bun test`, `bun run typecheck` and `bun run check` (biome).
 
 ## What is where
 
 | File | What it is |
 |---|---|
-| `prifly-extension.json` | The manifest: `connections` (the accounts it uses and why), and a `launch`er |
-| `index.ts` | What prifly imports: `activate(api)` registers the tool; `choices`, `launch` and `launched` answer the launcher |
-| `whoami-tool.ts` | The MCP tool, `mcp__prifly__template_whoami`: calls Microsoft Graph through `api.connections.fetch`, so prifly holds the token |
-| `things.ts` | The board's items and the session a picked one starts |
-| `test/fake-api.ts` | A fake `api` that records what the extension shows, logs and registers, and a fake `api.connections` over a fake token endpoint — copy it as it is |
-| `test/index.test.ts` | Tests of the tool and the launcher against the fakes |
+| `prifly-extension.json` | The manifest: the Google `connections`, the `launch`er and the settings |
+| `index.ts` | What prifly imports: `activate(api)` registers the tools and starts the poller; `choices`, `launch` and `launched` answer the launcher |
+| `board.ts`, `launch.ts` | The board's columns and rows, and what a picked row starts or does |
+| `errors-*.ts`, `poll.ts` | Error Reporting reads, the poller's cache, the APIs check, launched-card memory |
+| `scope.ts`, `settings.ts`, `projects.ts` | Which connection is used, what the reader chose (`state.json`), the project list |
+| `google.ts` | The only file that talks to Google, through `api.connections.fetch` |
+| `test/` | Tests against a fake `api` and a fake Google |
 
 Import prifly's types with `import type`: they are erased, so the host never
-needs the package to run the extension. Everything added to the api after
-its first version is optional (`api.tools?.register`, `api.connections?.list`):
-call it that way, and the extension still loads on an older prifly.
+needs the package to run the extension.
