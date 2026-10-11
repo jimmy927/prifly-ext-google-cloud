@@ -45,7 +45,7 @@ describe("nothing in the status bar", () => {
 });
 
 describe("the board carries what the panel showed", () => {
-  test("the account, its client and the default project open the board", async () => {
+  test("the account and the default project open the board", async () => {
     world = makeWorld({ chosen: ["shop-prod", "shop-stage"] });
     await world.start();
     const account = boardIn(boardOf(world.api, "")).actions?.find(
@@ -53,8 +53,7 @@ describe("the board carries what the panel showed", () => {
     );
     expect(account).toEqual({
       key: "info:account",
-      title: "Reading as reader@example.com",
-      detail: "Client prifly · default project shop-prod",
+      title: "Reading as reader@example.com · default project shop-prod",
       tone: "muted",
     });
   });
@@ -74,7 +73,7 @@ describe("the board carries what the panel showed", () => {
         key: "apis:shop-prod",
         title: "Not enabled: Error Reporting, Compute Engine, Cloud Billing",
         group: "shop-prod",
-        detail: "Switch them on so the board and the tools can read this project",
+        detail: "Switch them on to read this project",
         tone: "warning",
         url: "https://console.cloud.google.com/apis/library/clouderrorreporting.googleapis.com?project=shop-prod",
       },

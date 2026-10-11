@@ -88,7 +88,7 @@ function apisRow(api: HostApi, connection: string, project: string): LaunchChoic
       key: `apis:${project}`,
       title: `Not enabled: ${found.map((each) => each.title).join(", ")}`,
       group: project,
-      detail: "Switch them on so the board and the tools can read this project",
+      detail: "Switch them on to read this project",
       tone: "warning",
       url: first.enableUrl,
     },
@@ -144,13 +144,10 @@ export function boardOf(api: HostApi, query: string): LaunchBoard | LaunchChoice
       { key: "setup:projects", title: "Choose projects…" },
       {
         key: "info:account",
-        title: `Reading as ${where.connection.account}`,
-        detail: [
-          `Client ${where.connection.client}`,
-          defaultProject === "" ? "" : `default project ${defaultProject}`,
-        ]
-          .filter((part) => part !== "")
-          .join(" · "),
+        title:
+          defaultProject === ""
+            ? `Reading as ${where.connection.account}`
+            : `Reading as ${where.connection.account} · default project ${defaultProject}`,
         tone: "muted",
       },
     ],
