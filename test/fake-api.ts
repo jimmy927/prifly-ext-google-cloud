@@ -18,8 +18,8 @@ import type {
   ExtensionFetchOptions,
   ExtensionNeedsSignIn,
   ExtensionPickAnswer,
-  ExtensionToolContext,
   ExtensionTool,
+  ExtensionToolContext,
   LauncherFlag,
   SettingValues,
 } from "@prifly/extension-api";
