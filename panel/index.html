@@ -1,26 +1,115 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Template</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        font-family: system-ui, sans-serif;
-      }
-      body {
-        margin: 1rem;
-      }
-      li {
-        margin: 0.25rem 0;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Template things</h1>
-    <p id="error" hidden></p>
-    <ul id="things"></ul>
-    <script type="module" src="app.js"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Google Cloud</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1d2127;
+    --muted: #5d6673;
+    --line: #d5d9e0;
+    --accent: #1a5fd0;
+    --ok: #17693a;
+    --warn: #8a5a00;
+    --bad: #a3231c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16191e;
+      --fg: #e4e7ec;
+      --muted: #9aa3b0;
+      --line: #343a44;
+      --accent: #7fb0ff;
+      --ok: #6fd69a;
+      --warn: #e6b450;
+      --bad: #ff8f87;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  section { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .grow { flex: 1 1 200px; }
+  .badge { border: 1px solid currentColor; border-radius: 10px; padding: 0 8px; font-size: 12px; }
+  .badge.ok { color: var(--ok); }
+  .badge.warn { color: var(--warn); }
+  .badge.bad { color: var(--bad); }
+  .error { color: var(--bad); margin: 6px 0; }
+  button, input[type="search"] {
+    font: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 12px;
+  }
+  button { cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  input[type="search"] { width: 100%; }
+  ul { list-style: none; margin: 8px 0; padding: 0; }
+  #project-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+  #project-list li { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-bottom: 1px solid var(--line); }
+  #project-list li:last-child { border-bottom: 0; }
+  #project-list label { display: flex; align-items: center; gap: 6px; }
+  .name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .name small { display: block; color: var(--muted); }
+  .default { flex: none; color: var(--muted); font-size: 12px; }
+  #apis li { padding: 3px 0; }
+  .saved { color: var(--ok); }
+  .line { min-height: 1.45em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Google Cloud</h1>
+
+  <section id="account">
+    <h2>Account</h2>
+    <div class="row">
+      <div class="grow">
+        <div id="account-name" class="line">Reading your account...</div>
+        <div id="account-client" class="muted line"></div>
+      </div>
+      <span id="account-badge" class="badge" hidden></span>
+      <button id="allow" type="button" disabled>Allow Google Cloud</button>
+    </div>
+    <p id="account-message" class="muted line"></p>
+    <p id="allow-error" class="error line" hidden></p>
+  </section>
+
+  <section id="projects">
+    <h2>Projects</h2>
+    <input id="filter" type="search" placeholder="Filter projects" aria-label="Filter projects" disabled>
+    <p id="projects-status" class="muted line"></p>
+    <ul id="project-list"></ul>
+    <div class="row">
+      <button id="save" type="button" disabled>Save</button>
+      <span id="saved" class="saved line" hidden>Saved</span>
+      <span id="save-error" class="error line" hidden></span>
+    </div>
+  </section>
+
+  <section id="apis-section">
+    <h2>APIs</h2>
+    <p id="apis-status" class="muted line"></p>
+    <ul id="apis"></ul>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
 </html>
