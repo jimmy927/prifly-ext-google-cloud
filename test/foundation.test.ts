@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allPages, gfetch, type Result, sayFailure } from "../google";
+import { listProjects } from "../projects";
 import { allowCloud, CLOUD_PLATFORM, sayStanding, standing } from "../scope";
 import { chosenOf, pollMinutes, readChosen, writeChosen } from "../settings";
 import { fakeConnections } from "./fake-api";
@@ -106,6 +107,38 @@ describe("gfetch", () => {
     );
     expect(answer).toEqual({ ok: [1, 2, 3] });
     expect(tokens).toEqual([undefined, "b"]);
+  });
+});
+
+describe("listProjects", () => {
+  test("pages through projects:search and sorts by id", async () => {
+    const fake = fakeConnections({
+      accounts: [CLOUD_ACCOUNT],
+      provider: fakeGoogle([
+        {
+          url: /projects:search.*pageToken=p2/,
+          answer: () =>
+            json({ projects: [{ projectId: "alpha", displayName: "Alpha", state: "ACTIVE" }] }),
+        },
+        {
+          url: /projects:search/,
+          answer: () =>
+            json({
+              projects: [
+                { projectId: "zeta", state: "ACTIVE", parent: "organizations/1" },
+                { displayName: "no id" },
+              ],
+              nextPageToken: "p2",
+            }),
+        },
+      ]),
+    });
+    expect(await listProjects(fake.connections, "google-1")).toEqual({
+      ok: [
+        { id: "alpha", name: "Alpha", state: "ACTIVE", parent: "" },
+        { id: "zeta", name: "zeta", state: "ACTIVE", parent: "organizations/1" },
+      ],
+    });
   });
 });
 
