@@ -70,6 +70,8 @@ export type FakeConnections = {
   accounts: FakeAccount[];
   /** Every request `fetch` sent to the provider, its `Authorization` header set. */
   requests: Request[];
+  /** The options of each of those calls, in the same order (`project`, `resource`, `tenant`). */
+  options: (ExtensionFetchOptions | undefined)[];
 };
 
 const NO_PROVIDER: FakeProvider = () => new Response("no fake provider", { status: 404 });
@@ -90,6 +92,7 @@ export function fakeConnections(
   const accounts = [...(options.accounts ?? [])];
   const endpoint = new FakeTokenEndpoint();
   const requests: Request[] = [];
+  const sentOptions: (ExtensionFetchOptions | undefined)[] = [];
   const provider = options.provider ?? NO_PROVIDER;
 
   const find = (id: string): FakeAccount => {
@@ -112,12 +115,16 @@ export function fakeConnections(
   const connections: ExtensionConnectionsApi = {
     list: (wanted) =>
       accounts.filter((each) => wanted === undefined || each.provider === wanted).map(view),
-    async fetch(id, request, _options?: ExtensionFetchOptions) {
+    async fetch(id, request, fetchOptions?: ExtensionFetchOptions) {
       const account = find(id);
       const token = endpoint.issue(id);
       if (token === null) return needsSignIn(account);
       // Two calls: Bun types a string and a Request as separate overloads of the constructor.
-      const sent = typeof request === "string" ? new Request(request) : new Request(request);
+      const sent =
+        typeof request === "string"
+          ? new Request(request, fetchOptions)
+          : new Request(request, fetchOptions);
+      sentOptions.push(fetchOptions);
       sent.headers.set("Authorization", `Bearer ${token}`);
       requests.push(sent);
       return await provider(new Request(sent));
@@ -150,7 +157,7 @@ export function fakeConnections(
       return { ok: true, connection: account.id, account: account.account };
     },
   };
-  return { connections, endpoint, accounts, requests };
+  return { connections, endpoint, accounts, requests, options: sentOptions };
 }
 
 /** What the extension did with the fake api, to look at in a test. */
@@ -176,6 +183,8 @@ export function fakeApi(
     connections?: ExtensionConnectionsApi;
     settings?: SettingValues;
     folder?: string;
+    /** `ctx.scratchpad` of every tool call; left out, the context has none (an older prifly). */
+    scratchpad?: string;
   } = {},
 ): FakeApi {
   let tools: ExtensionTool[] = [];
@@ -220,6 +229,7 @@ export function fakeApi(
       session: "fake-session",
       pick: async () => pick,
       signal: new AbortController().signal,
+      ...(options.scratchpad === undefined ? {} : { scratchpad: options.scratchpad }),
     };
     return tool.call(args, ctx);
   };

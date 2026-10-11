@@ -1,33 +1,44 @@
 {
-  "id": "template",
-  "name": "Template",
-  "description": "A minimal prifly extension to start a plugin from: one MCP tool, one launch board, one panel.",
+  "id": "google-cloud",
+  "name": "Google Cloud",
+  "description": "Your Google Cloud projects, logs, VMs, Cloud Run services and error groups, read through prifly's Google connection; start a session from an error group. Reads only: v1 changes nothing in Google Cloud.",
   "version": "0.1.0",
   "main": "index.ts",
   "connections": [
     {
-      "provider": "microsoft",
-      "scopes": ["User.Read"],
-      "why": "Reads your name, to show which account the template's tool uses."
+      "provider": "google",
+      "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+      "why": "Reads your projects, logs, error groups, VMs, Cloud Run services and billing link. Google offers no narrower scope Error Reporting accepts; this extension makes no changes.",
+      "optional": true
     }
   ],
   "launch": [
     {
-      "id": "things",
-      "label": "Template things",
-      "icon": "box",
-      "description": "Start a session from one of the template's things",
-      "searchPlaceholder": "Search things"
+      "id": "error",
+      "label": "From a log entry / error group…",
+      "icon": "cloud",
+      "description": "Open error groups in the projects you picked. The session starts with the stack, the latest events and the log entries around them.",
+      "searchPlaceholder": "Filter by message, service, project or group id…"
     }
   ],
   "panels": [
     {
-      "id": "things",
-      "label": "Template",
-      "icon": "box",
-      "description": "The template's things, in a window of its own",
+      "id": "cloud",
+      "label": "Google Cloud",
+      "icon": "cloud",
+      "description": "Your Google account for Cloud, and which projects the board and the tools use",
       "folder": "panel",
       "page": "index.html"
+    }
+  ],
+  "settings": [
+    {
+      "id": "pollMinutes",
+      "label": "Check for new error groups every (minutes)",
+      "type": "number",
+      "default": 5,
+      "min": 1,
+      "max": 60
     }
   ]
 }

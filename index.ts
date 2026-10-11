@@ -1,39 +1,58 @@
 /**
- * The template extension: what prifly imports. `activate` is given the api
- * and registers the extension's MCP tool; the other exports answer the
- * launcher (`choices`, `launch`) and the panel (`panel`) the manifest
- * declares. Types come from `@prifly/extension-api` with `import type`, so
- * nothing of it is loaded at run time.
+ * The Google Cloud extension: what prifly imports. `activate` registers the
+ * read-only `gcloud_*` tools and starts the Error Reporting poller; the other
+ * exports answer the launcher `error` (`choices`, `launch`, `launched`) and
+ * the panel `cloud` (`panel`). Types come from `@prifly/extension-api` with
+ * `import type`, so nothing of it is loaded at run time.
  */
 
-import type { ExtensionApi, Launch, LaunchBoard, PanelRequest } from "@prifly/extension-api";
-import { board, launchOf, THINGS } from "./things";
-import { whoAmITool } from "./whoami-tool";
+import type { Launch, LaunchBoard, LaunchChoice, PanelRequest } from "@prifly/extension-api";
+import { boardOf } from "./board";
+import type { HostApi } from "./host";
+import { launchedOf, launchOf } from "./launch";
+import { panelAnswer } from "./panel-api";
+import { startPoller } from "./poll";
+import { cloudTools } from "./tools";
 
-let api: ExtensionApi | null = null;
+let api: HostApi | null = null;
 
-export function activate(given: ExtensionApi): () => void {
+function live(): HostApi {
+  if (api === null) throw new Error("The Google Cloud extension is not running.");
+  return api;
+}
+
+export function activate(given: HostApi): () => void {
   api = given;
-  // Absent on an older prifly: optional, like every part added after the first version.
-  given.tools?.register([whoAmITool(() => api?.connections)]);
-  given.log("activated", { things: THINGS.length });
+  given.tools?.register(cloudTools(() => api));
+  const stopPolling = startPoller(given);
+  given.log("activated", {});
   return () => {
+    stopPolling();
     api = null;
   };
 }
 
-/** The launcher `things`: its board, narrowed by what the reader typed. */
-export function choices(_launchId: string, query: string): LaunchBoard {
-  return board(query);
+/** The launcher `error`: the error groups of the chosen projects, from the poller's cache. */
+export function choices(_launchId: string, query: string): LaunchBoard | LaunchChoice[] {
+  return boardOf(live(), query);
 }
 
-/** The session a picked thing starts. */
-export function launch(_launchId: string, key: string, input: string): Launch {
-  return launchOf(key, input);
+/** The session a picked error group starts — or, for a setup row, what it did. */
+export function launch(
+  _launchId: string,
+  key: string,
+  input: string,
+  how: { again: boolean },
+): Promise<Launch> {
+  return launchOf(live(), key, input, how);
+}
+
+/** Which session a launch became, so the card tints and the session gets its chip. */
+export function launched(_launchId: string, key: string, sessionId: string): void {
+  launchedOf(live(), key, sessionId);
 }
 
 /** What the panel's page asks for at `api/<path>`; answered as JSON. */
-export function panel(_panelId: string, request: PanelRequest): unknown {
-  if (request.path === "things") return { things: THINGS };
-  throw new Error(`Nothing at api/${request.path}`);
+export function panel(_panelId: string, request: PanelRequest): Promise<unknown> {
+  return panelAnswer(live(), request);
 }

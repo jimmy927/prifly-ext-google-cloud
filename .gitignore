@@ -1,1 +1,4 @@
 node_modules/
+state.json
+state.json.tmp
+issues/

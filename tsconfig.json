@@ -23,5 +23,6 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["*.ts", "test/**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }
