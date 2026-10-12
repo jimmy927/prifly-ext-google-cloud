@@ -96,7 +96,7 @@ describe("a project added while a round is in flight", () => {
     await world.start();
     await launchOf(world.api, "setup:add:shop-stage", "", { again: false });
     const items = boardIn(boardOf(world.api, "")).items;
-    expect(items.find((item) => item.group === "shop-stage")).toEqual({
+    expect(items.find((item) => item.key.startsWith("reading:"))).toEqual({
       key: "reading:shop-stage",
       title: "Reading Error Reporting…",
       group: "shop-stage",

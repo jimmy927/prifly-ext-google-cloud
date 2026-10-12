@@ -1,7 +1,7 @@
 /**
  * The projects the account can see, from Cloud Resource Manager v3
- * `projects:search` — shared by the `gcloud_projects` tool, the board's
- * "show this project" rows and the panel's project list.
+ * `projects:search` — shared by the `gcloud_projects` tool and the board's
+ * "show this project" rows.
  */
 
 import type { ExtensionConnectionsApi } from "@prifly/extension-api";

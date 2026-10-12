@@ -1,7 +1,7 @@
 /**
  * The only file that talks to Google. Every call goes through prifly's
  * `api.connections.fetch`, so prifly holds the token and adds it; the answer
- * comes back as a `Result` a tool, the board and the panel can each turn into
+ * comes back as a `Result` a tool, the board and the tools can each turn into
  * words, rather than a status code each of them reads its own way.
  *
  * `project` is passed on as the fetch's `{ project }`: prifly sets

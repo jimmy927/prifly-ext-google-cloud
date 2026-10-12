@@ -19,6 +19,7 @@ import type {
   ExtensionNeedsSignIn,
   ExtensionPickAnswer,
   ExtensionTool,
+  ExtensionToolContext,
   LauncherFlag,
   SettingValues,
 } from "@prifly/extension-api";
@@ -221,6 +222,7 @@ export function fakeApi(
     start: async () => ({ started: false, reason: "A fake api starts no session." }),
     snooze: () => undefined,
     dialog: async () => null,
+    openUrl: async () => false,
   };
   const callTool: FakeApi["callTool"] = (name, args, pick = null) => {
     const tool = tools.find((each) => each.name === name);
@@ -231,7 +233,8 @@ export function fakeApi(
       signal: new AbortController().signal,
       ...(options.scratchpad === undefined ? {} : { scratchpad: options.scratchpad }),
     };
-    return tool.call(args, ctx);
+    // The cast: a fake without `scratchpad` stands for an older prifly (see host.ts).
+    return tool.call(args, ctx as ExtensionToolContext);
   };
   return { api, tools: () => tools, callTool, ...fake };
 }

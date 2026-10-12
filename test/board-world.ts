@@ -7,10 +7,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LogEntry, RawEvent, RawStat } from "../errors-api";
+import { apisOf, apisRead, forgetApis, READ_APIS } from "../errors-apis";
 import { forgetProjects } from "../errors-projects";
 import type { HostApi } from "../host";
 import type { PollerEnv } from "../poll";
 import { settled, startPoller } from "../poll";
+import { standing } from "../scope";
+import { readChosen } from "../settings";
 import { type FakeApi, type FakeConnections, fakeApi, fakeConnections } from "./fake-api";
 import { CLOUD_ACCOUNT, fakeGoogle, json, type Route } from "./google-fake";
 
@@ -31,6 +34,8 @@ export type World = {
   stats: Record<string, Stats>;
   events: Record<string, RawEvent[] | (() => Response)>;
   entries: LogEntry[] | (() => Response);
+  /** The APIs switched on in each project, by project; all of them when a project is not named. */
+  enabled: Record<string, string[] | (() => Response)>;
   logBodies: { resourceNames: string[]; filter: string; orderBy: string; pageSize: number }[];
   now: number;
   /** Time passes; the poller's timer fires once. */
@@ -96,10 +101,20 @@ export function makeWorld(
     stats: {},
     events: {},
     entries: [],
+    enabled: {},
     logBodies: [],
     now: NOW,
   } as unknown as World;
+  forgetApis();
   const routes: Route[] = [
+    {
+      url: /serviceusage\.googleapis\.com\/v1\/projects\/([^/]+)\/services/,
+      answer: (_request, match) => {
+        const answer = built.enabled[match[1] ?? ""] ?? READ_APIS.map((each) => each.service);
+        if (typeof answer === "function") return answer();
+        return json({ services: answer.map((name) => ({ name: `projects/1/services/${name}` })) });
+      },
+    },
     {
       url: /projects\/([^/]+)\/groupStats\?(.*)/,
       answer: (request, match) => {
@@ -175,10 +190,17 @@ export function makeWorld(
     start: async () => {
       stopPoller = startPoller(api, env);
       await settled();
+      const where = standing(api.connections);
+      if (where.kind === "ok") {
+        for (const project of readChosen(folder).projects)
+          apisOf(api, where.connection.id, project);
+      }
+      await apisRead();
     },
     stop: () => {
       stopPoller();
       forgetProjects();
+      forgetApis();
     },
     groupStatsCalls: () =>
       conn.requests.map((each) => each.url).filter((url) => url.includes("groupStats")),

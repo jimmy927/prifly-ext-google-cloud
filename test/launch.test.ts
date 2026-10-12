@@ -163,7 +163,7 @@ describe("launched sessions", () => {
     expect(last?.bySession["sess-1"]).toEqual([
       {
         key: "error:shop-prod/G1",
-        icon: "cloud",
+        icon: "google-cloud",
         label: "Error group · shop-prod",
         tone: "info",
         details: ["KeyError: 'cart'"],

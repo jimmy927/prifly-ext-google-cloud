@@ -16,19 +16,9 @@
     {
       "id": "error",
       "label": "From a log entry / error group…",
-      "icon": "cloud",
+      "icon": "google-cloud",
       "description": "Open error groups in the projects you picked. The session starts with the stack, the latest events and the log entries around them.",
       "searchPlaceholder": "Filter by message, service, project or group id…"
-    }
-  ],
-  "panels": [
-    {
-      "id": "cloud",
-      "label": "Google Cloud",
-      "icon": "cloud",
-      "description": "Your Google account for Cloud, and which projects the board and the tools use",
-      "folder": "panel",
-      "page": "index.html"
     }
   ],
   "settings": [
