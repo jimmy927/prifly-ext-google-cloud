@@ -1,6 +1,7 @@
 {
   "name": "prifly-ext-google-cloud",
   "private": true,
+  "license": "FSL-1.1-ALv2",
   "type": "module",
   "description": "A prifly extension: your Google Cloud projects, logs, VMs, Cloud Run services and error groups, read through prifly's Google connection.",
   "scripts": {
