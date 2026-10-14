@@ -10,8 +10,10 @@ What it relies on outside the worktree:
 
 - `bun` on the PATH.
 - SSH access to GitHub: `@prifly/extension-api` is a git dependency,
-  `git+ssh://git@github.com/jimmy927/prifly-extension-api.git#v0.1.0`, so the install clones it
-  with the machine's own SSH key.
+  `git+ssh://git@github.com/jimmy927/prifly-extension-api.git#v0.6.0`, so the install clones it
+  with the machine's own SSH key. If bun says "no commit matching" a tag that exists, its cached
+  clone of that repository is stale: remove that clone from `~/.bun/install/cache/` and install again.
 
-`state.json`, `launched.json` and `issues/` are written at run time by the extension itself and
-are gitignored; a fresh worktree needs none of them.
+`state.json` (the default project) is written at run time by the extension itself and is
+gitignored; a fresh worktree needs none of it. `launched.json` and `issues/` were an older
+version's and stay ignored for installs that still have them.

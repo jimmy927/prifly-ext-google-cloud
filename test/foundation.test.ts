@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allPages, gfetch, type Result, sayFailure } from "../google";
+import { allPages, gfetch, googleUrl, gsend, type Result, sayFailure } from "../google";
 import { listProjects } from "../projects";
 import { allowCloud, CLOUD_PLATFORM, sayStanding, standing } from "../scope";
-import { chosenOf, pollMinutes, readChosen, writeChosen } from "../settings";
+import { chosenOf, readChosen, writeChosen } from "../settings";
 import { fakeConnections } from "./fake-api";
 import {
   CLOUD_ACCOUNT,
@@ -93,6 +93,34 @@ describe("gfetch", () => {
     if ("ok" in answer) throw new Error("expected a failure");
     expect(sayFailure(answer)).toContain("Sign in again");
     expect(sayFailure(answer)).toContain("Do not retry");
+  });
+
+  test("an empty or non-JSON answer and a refused request never throw", async () => {
+    const answers = [new Response("", { status: 200 }), new Response("plain", { status: 200 })];
+    const fake = fakeConnections({
+      accounts: [CLOUD_ACCOUNT],
+      provider: () => answers.shift() ?? json({}),
+    });
+    expect(await gsend(fake.connections, "google-1", URL_PROJECTS, { method: "DELETE" })).toEqual({
+      ok: { status: 200, body: {} },
+    });
+    expect(await gsend(fake.connections, "google-1", URL_PROJECTS)).toEqual({
+      ok: { status: 200, body: "plain" },
+    });
+    const refused = await gsend(fake.connections, "no-such-connection", URL_PROJECTS);
+    expect(refused).toMatchObject({ failed: { status: 0 } });
+    if ("ok" in refused) throw new Error("expected a failure");
+    expect(sayFailure(refused)).toContain("The request was not sent: No connection");
+  });
+
+  test("only https *.googleapis.com URLs are Google's", () => {
+    expect(googleUrl("https://dns.googleapis.com/dns/v1/x")?.hostname).toBe("dns.googleapis.com");
+    expect(googleUrl("http://dns.googleapis.com/x")).toBeNull();
+    expect(googleUrl("https://evil.com/x")).toBeNull();
+    expect(googleUrl("https://googleapis.com.evil.com/x")).toBeNull();
+    expect(googleUrl("https://user@dns.googleapis.com/x")).toBeNull();
+    expect(googleUrl("https://dns.googleapis.com:8443/x")).toBeNull();
+    expect(googleUrl("not a url")).toBeNull();
   });
 
   test("allPages follows nextPageToken and stops at the last page", async () => {
@@ -185,7 +213,5 @@ describe("settings", () => {
       projects: ["a"],
       defaultProject: "a",
     });
-    expect(pollMinutes({ settings: { pollMinutes: 0 } })).toBe(5);
-    expect(pollMinutes({ settings: { pollMinutes: 15 } })).toBe(15);
   });
 });

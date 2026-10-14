@@ -8,9 +8,9 @@
 import { CLOUD_PLATFORM } from "../scope";
 import type { FakeAccount, FakeProvider } from "./fake-api";
 
-/** One route: `GET`/`POST`, a pattern the full URL must match, and its answer. */
+/** One route: an HTTP method, a pattern the full URL must match, and its answer. */
 export type Route = {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   url: RegExp;
   answer: (request: Request, match: RegExpMatchArray) => Response | Promise<Response>;
 };

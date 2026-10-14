@@ -4,20 +4,20 @@
  * The plan was `cloud-platform.read-only` first. Google's discovery documents
  * (read 2026-10-11) say Error Reporting accepts only `cloud-platform`, and
  * Compute, Cloud Run and Cloud Billing do not accept `cloud-platform.read-only`
- * at all (each has its own `*.readonly` scope instead). So, as decided for a
- * refusal, the extension asks for `cloud-platform`; it still changes nothing,
- * since v1 has no write tools.
+ * at all (each has its own `*.readonly` scope instead). The extension asks
+ * for `cloud-platform`, which also covers its writes; every write still waits
+ * for the reader's confirm card (`write.ts`).
  *
- * The scope is asked for only from a click — the board's "Allow Google Cloud"
- * row — as incremental consent on an account the reader
- * already connected, never from a tool call a session makes.
+ * The scope is asked for only by `gcloud_connect`, as incremental consent on
+ * an account the reader already connected; the reader approves it on Google's
+ * own consent page in their browser.
  */
 
 import type { ExtensionConnection, ExtensionConnectionsApi } from "@prifly/extension-api";
 
 export const CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform";
 
-/** Where the reader stands with Google, for the board and the tools. */
+/** Where the reader stands with Google, for the tools and the status line. */
 export type Standing =
   | { kind: "no-api" }
   | { kind: "no-account" }
@@ -51,11 +51,11 @@ export function sayStanding(state: Standing): string | null {
     case "no-api":
       return "This prifly has no Google connections yet: update prifly.";
     case "no-account":
-      return 'No Google account is connected. The reader clicks "Allow Google Cloud" on the Google Cloud board.';
+      return "No Google account is connected for Google Cloud. If the reader agrees, call gcloud_connect: it opens Google's consent page in their browser.";
     case "no-scope":
-      return `${state.connection.account} is connected, but not for Google Cloud. The reader clicks "Allow Google Cloud" on the Google Cloud board. Do not retry until then.`;
+      return `${state.connection.account} is connected, but not for Google Cloud. If the reader agrees, call gcloud_connect: it opens Google's consent page in their browser. Do not retry until then.`;
     case "needs-sign-in":
-      return `Needs sign-in: Google ended the grant for ${state.connection.account}. The reader clicks "Sign in again" in prifly. Do not retry until then.`;
+      return `Needs sign-in: Google ended the grant for ${state.connection.account}. The reader clicks "Sign in again" in prifly, or you call gcloud_connect if they agree. Do not retry until then.`;
   }
 }
 

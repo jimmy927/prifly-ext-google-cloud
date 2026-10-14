@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { writeChosen } from "../settings";
-import { cloudTools } from "../tools";
-import { type FakeAccount, fakeApi, fakeConnections } from "./fake-api";
 import {
-  CLOUD_ACCOUNT,
-  fakeGoogle,
   GMAIL_ONLY_ACCOUNT,
   json,
   permissionDenied,
@@ -15,56 +9,39 @@ import {
   rateLimited,
   serviceDisabled,
 } from "./google-fake";
+import { cleanUp, setup, temp } from "./harness";
 
-const folders: string[] = [];
+afterEach(cleanUp);
 
-afterEach(() => {
-  for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
-});
-
-function temp(): string {
-  const folder = mkdtempSync(join(tmpdir(), "gcloud-tools-"));
-  folders.push(folder);
-  return folder;
-}
-
-/** A fake api with the tools registered; `defaultProject` is chosen unless left out. */
-function setup(
-  routes: Route[],
-  options: {
-    accounts?: FakeAccount[];
-    defaultProject?: string | undefined;
-    scratchpad?: string;
-  } = {},
-) {
-  const folder = temp();
-  const defaultProject = "defaultProject" in options ? options.defaultProject : "shop-prod";
-  if (defaultProject !== undefined) writeChosen(folder, { projects: [], defaultProject });
-  const connections = fakeConnections({
-    accounts: options.accounts ?? [CLOUD_ACCOUNT],
-    provider: fakeGoogle(routes),
-  });
-  const fake = fakeApi({
-    connections: connections.connections,
-    folder,
-    ...(options.scratchpad === undefined ? {} : { scratchpad: options.scratchpad }),
-  });
-  fake.api.tools?.register(cloudTools(() => fake.api));
-  return { fake, connections };
-}
-
+/** The curated per-project reads, which every failure below goes through. */
 const ALL_TOOLS = [
   ["gcloud_projects", {}],
   ["gcloud_logs", {}],
   ["gcloud_instances", {}],
   ["gcloud_services", {}],
   ["gcloud_billing", {}],
+  ["gcloud_dns_zones", {}],
 ] as const;
 
 describe("tool list", () => {
-  test("five read-only tools with object schemas", () => {
+  test("the toolbox, with object schemas", () => {
     const { fake } = setup([]);
-    expect(fake.tools().map((tool) => tool.name)).toEqual(ALL_TOOLS.map(([name]) => name));
+    expect(fake.tools().map((tool) => tool.name)).toEqual([
+      "gcloud_api",
+      "gcloud_api_docs",
+      "gcloud_wait_operation",
+      "gcloud_projects",
+      "gcloud_default_project",
+      "gcloud_logs",
+      "gcloud_services",
+      "gcloud_instances",
+      "gcloud_billing",
+      "gcloud_enable_api",
+      "gcloud_dns_zones",
+      "gcloud_dns_records",
+      "gcloud_dns_change",
+      "gcloud_connect",
+    ]);
     for (const tool of fake.tools()) {
       expect(tool.inputSchema["type"]).toBe("object");
       expect(tool.name).toMatch(/^[a-z][a-z0-9_]{0,47}$/);
@@ -371,12 +348,12 @@ describe("failures, for every tool", () => {
     expect(connections.endpoint.issued("google-1")).toBe(0);
   });
 
-  test("no Cloud scope says to allow Google Cloud, and never signs in", async () => {
+  test("no Cloud scope points to gcloud_connect, and never signs in by itself", async () => {
     const { fake, connections } = setup([], { accounts: [GMAIL_ONLY_ACCOUNT] });
     for (const [name, args] of ALL_TOOLS) {
       const text = await fake.callTool(name, args);
       expect(text).toContain("not for Google Cloud");
-      expect(text).toContain('"Allow Google Cloud"');
+      expect(text).toContain("gcloud_connect");
     }
     expect(connections.accounts[0]?.scopes).toEqual(GMAIL_ONLY_ACCOUNT.scopes);
     expect(connections.requests).toHaveLength(0);
@@ -393,7 +370,7 @@ describe("failures, for every tool", () => {
     ]);
     const text = await fake.callTool("gcloud_instances", {});
     expect(text).toBe(
-      "The compute.googleapis.com is not enabled in project shop-prod. Someone with access enables it at https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=shop-prod; do not retry until then.",
+      "The compute.googleapis.com is not enabled in project shop-prod: enable it with gcloud_enable_api (service compute.googleapis.com, project shop-prod) if the reader agrees, or at https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=shop-prod. Do not retry until then.",
     );
   });
 
@@ -432,7 +409,7 @@ describe("no default project", () => {
     const { fake, connections } = setup([], { defaultProject: undefined });
     for (const [name] of ALL_TOOLS.filter(([each]) => each !== "gcloud_projects")) {
       expect(await fake.callTool(name, {})).toBe(
-        'No project given and no default project chosen: pass `project`, or the reader chooses projects with "Choose projects…" on the Google Cloud board (the first one chosen is the default).',
+        "No project given and no default project set: pass `project`, or set the default with gcloud_default_project (gcloud_projects lists them).",
       );
     }
     expect(connections.requests).toHaveLength(0);

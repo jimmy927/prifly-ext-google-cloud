@@ -11,6 +11,7 @@
  */
 
 import type {
+  ConfirmSpec,
   Decoration,
   ExtensionApi,
   ExtensionConnection,
@@ -176,6 +177,10 @@ export type FakeApi = {
   flags: Map<string, LauncherFlag | null>;
   notices: { text: string; tone: string | undefined; session: string | undefined }[];
   logs: { event: string; fields: Record<string, unknown> | undefined }[];
+  /** Every confirm card asked for, in order. */
+  confirms: ConfirmSpec[];
+  /** Every `api.status` line, in order. */
+  statuses: string[];
 };
 
 /** A fake `api`; parts left out of `options` are prifly's quiet defaults. */
@@ -186,6 +191,11 @@ export function fakeApi(
     folder?: string;
     /** `ctx.scratchpad` of every tool call; left out, the context has none (an older prifly). */
     scratchpad?: string;
+    /**
+     * What the reader answers on a confirm card: true for Confirm (the
+     * default), false for Cancel; null leaves `api.confirm` out (an older prifly).
+     */
+    confirm?: boolean | null;
   } = {},
 ): FakeApi {
   let tools: ExtensionTool[] = [];
@@ -194,9 +204,12 @@ export function fakeApi(
     flags: new Map(),
     notices: [],
     logs: [],
+    confirms: [],
+    statuses: [],
   };
+  const confirmAnswer = options.confirm === undefined ? true : options.confirm;
   const api: ExtensionApi = {
-    features: ["settings", "start-session", "session-lookup"],
+    features: ["settings", "start-session", "session-lookup", "confirm", "status"],
     ...(options.settings === undefined ? {} : { settings: options.settings }),
     ...(options.connections === undefined ? {} : { connections: options.connections }),
     tools: {
@@ -223,6 +236,15 @@ export function fakeApi(
     snooze: () => undefined,
     dialog: async () => null,
     openUrl: async () => false,
+    status: (text) => void fake.statuses.push(text),
+    ...(confirmAnswer === null
+      ? {}
+      : {
+          confirm: async (spec: ConfirmSpec) => {
+            fake.confirms.push(spec);
+            return confirmAnswer;
+          },
+        }),
   };
   const callTool: FakeApi["callTool"] = (name, args, pick = null) => {
     const tool = tools.find((each) => each.name === name);

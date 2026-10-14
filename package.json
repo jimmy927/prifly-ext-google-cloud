@@ -3,7 +3,7 @@
   "private": true,
   "license": "FSL-1.1-ALv2",
   "type": "module",
-  "description": "A prifly extension: your Google Cloud projects, logs, VMs, Cloud Run services and error groups, read through prifly's Google connection.",
+  "description": "A prifly extension: Google Cloud from any session in place of the gcloud CLI — any Google Cloud REST API plus curated tools, every write confirmed by the reader.",
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
-    "@prifly/extension-api": "git+ssh://git@github.com/jimmy927/prifly-extension-api.git#v0.5.0",
+    "@prifly/extension-api": "git+ssh://git@github.com/jimmy927/prifly-extension-api.git#v0.6.0",
     "@types/bun": "^1.1.14",
     "typescript": "^7.0.2"
   }

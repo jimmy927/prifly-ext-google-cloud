@@ -1,34 +1,16 @@
 {
   "id": "google-cloud",
   "name": "Google Cloud",
-  "description": "Your Google Cloud projects, logs, VMs, Cloud Run services and error groups, read through prifly's Google connection; start a session from an error group. Reads only: v1 changes nothing in Google Cloud.",
-  "version": "0.1.0",
+  "description": "Google Cloud from any session, in place of the gcloud CLI: any Google Cloud REST API as you, plus tools for projects, logs, Cloud Run, billing, APIs and Cloud DNS. Reads run at once; every change waits for your confirm.",
+  "version": "0.2.0",
   "main": "index.ts",
+  "prompt": "prompt.md",
   "connections": [
     {
       "provider": "google",
       "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-      "why": "Reads your projects, logs, error groups, VMs, Cloud Run services and billing link. Google offers no narrower scope Error Reporting accepts; this extension makes no changes.",
+      "why": "Reads and, after you confirm each one on a card, changes your Google Cloud resources (DNS records, APIs, anything the REST APIs offer). Google offers no narrower scope that covers them.",
       "optional": true
-    }
-  ],
-  "launch": [
-    {
-      "id": "error",
-      "label": "From a log entry / error group…",
-      "icon": "google-cloud",
-      "description": "Open error groups in the projects you picked. The session starts with the stack, the latest events and the log entries around them.",
-      "searchPlaceholder": "Filter by message, service, project or group id…"
-    }
-  ],
-  "settings": [
-    {
-      "id": "pollMinutes",
-      "label": "Check for new error groups every (minutes)",
-      "type": "number",
-      "default": 5,
-      "min": 1,
-      "max": 60
     }
   ]
 }

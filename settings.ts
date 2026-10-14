@@ -1,22 +1,19 @@
 /**
- * What the reader chose: the projects the board shows and the default
- * project (the first chosen unless `state.json` names another), kept in `state.json` beside the extension
- * (the api has no way for an extension to write its own settings), and the
- * poll interval, a setting of the Extensions dialog.
+ * The default project — the one a tool reads when the session names none —
+ * kept in `state.json` beside the extension and set with
+ * `gcloud_default_project`. `projects` is what an older version's board
+ * kept; a file from then still reads, its first project the default.
  */
 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ExtensionApi } from "@prifly/extension-api";
 
 export type Chosen = {
-  /** The projects the board shows, in the reader's order. */
+  /** The projects an older version's board showed, in the reader's order. */
   projects: string[];
   /** The project a tool reads when the session names none; "" for none chosen. */
   defaultProject: string;
 };
-
-export const DEFAULT_POLL_MINUTES = 5;
 
 const NOTHING_CHOSEN: Chosen = { projects: [], defaultProject: "" };
 
@@ -54,9 +51,4 @@ export function writeChosen(folder: string, chosen: Chosen): void {
   const file = stateFile(folder);
   writeFileSync(`${file}.tmp`, `${JSON.stringify(chosen, null, 2)}\n`, { mode: 0o600 });
   renameSync(`${file}.tmp`, file);
-}
-
-export function pollMinutes(api: Pick<ExtensionApi, "settings">): number {
-  const value = api.settings?.["pollMinutes"];
-  return typeof value === "number" && value >= 1 ? value : DEFAULT_POLL_MINUTES;
 }

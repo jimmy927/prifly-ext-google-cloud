@@ -1,9 +1,12 @@
 /**
  * What every `gcloud_*` tool does first: find the Google connection in good
- * standing (never signing in from a tool), and the project to read. A tool
- * then only builds its request and words the answer.
+ * standing (only `gcloud_connect` ever signs in), and the project to read. A
+ * tool then only builds its request and words the answer; a write goes
+ * through `write.ts`, which asks the reader first.
  */
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ExtensionConnectionsApi, ExtensionTool } from "@prifly/extension-api";
 import { type Failure, sayFailure } from "./google";
 import type { HostApi, ToolContext } from "./host";
@@ -11,10 +14,10 @@ import { sayStanding, standing } from "./scope";
 import { readChosen } from "./settings";
 
 export const NO_PROJECT =
-  'No project given and no default project chosen: pass `project`, or the reader chooses projects with "Choose projects…" on the Google Cloud board (the first one chosen is the default).';
+  "No project given and no default project set: pass `project`, or set the default with gcloud_default_project (gcloud_projects lists them).";
 
 /** A Google project id, legacy domain-scoped ids included. */
-const PROJECT_ID = /^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+export const PROJECT_ID = /^(?:[a-z0-9.-]+:)?[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 
 export const NOT_A_PROJECT_ID =
   "That `project` is not a Google Cloud project id (lower-case letters, digits and hyphens, 6-30 characters).";
@@ -40,8 +43,7 @@ export type ToolSpec = {
 
 const PROJECT_PROPERTY = {
   type: "string",
-  description:
-    'Project id. Left out, the default project: the first one the reader chose with "Choose projects…" on the Google Cloud board.',
+  description: "Project id. Left out, the default project (gcloud_default_project sets it).",
 };
 
 export function stringArg(args: Record<string, unknown>, key: string): string | undefined {
@@ -50,7 +52,7 @@ export function stringArg(args: Record<string, unknown>, key: string): string | 
 }
 
 /** The project to read (argument, else the reader's default), or why none. */
-function projectOf(
+export function projectOf(
   api: HostApi,
   args: Record<string, unknown>,
 ): { id: string } | { refusal: string } {
@@ -93,4 +95,36 @@ export function orSentence<T>(answer: { ok: T } | Failure): { value: T } | { sen
 export function lastSegment(path: string | undefined): string {
   if (path === undefined) return "";
   return path.split("/").pop() ?? "";
+}
+
+/** The most a tool answers in its own text; the rest goes to the session's scratchpad. */
+export const MAX_ANSWER = 20_000;
+
+/**
+ * `text` when it fits; else its start, and the whole of it saved as
+ * `<label>-<time>.txt` in the session's scratchpad (said where), or how much
+ * was cut when the session has none.
+ */
+export function fitText(text: string, ready: Ready, label: string): string {
+  if (text.length <= MAX_ANSWER) return text;
+  const head = text.slice(0, MAX_ANSWER);
+  const cut = text.length - MAX_ANSWER;
+  const scratchpad = scratchpadOf(ready.ctx);
+  if (scratchpad === undefined) {
+    return `${head}\n(${cut} more characters cut: the answer was too long and this session has no scratchpad. Ask for less: a filter, fields or a smaller page.)`;
+  }
+  mkdirSync(scratchpad, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const file = join(scratchpad, `${label.replace(/[^a-z0-9-]/gi, "-")}-${stamp}.txt`);
+  writeFileSync(file, text);
+  return `${head}\n(${cut} more characters cut: the whole answer is in ${file})`;
+}
+
+/** `ctx.scratchpad`, which throws on a prifly that cannot find the session's folder. */
+function scratchpadOf(ctx: ToolContext): string | undefined {
+  try {
+    return ctx.scratchpad;
+  } catch {
+    return undefined;
+  }
 }
