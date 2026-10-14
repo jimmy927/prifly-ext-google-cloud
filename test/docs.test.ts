@@ -138,6 +138,33 @@ describe("trimDocs", () => {
     expect(some).toContain("Also matching");
   });
 
+  test("with a service path, base URL + printed path is the real URL, the service path once", () => {
+    const compute: Discovery = {
+      name: "compute",
+      version: "v1",
+      rootUrl: "https://compute.googleapis.com/",
+      servicePath: "compute/v1/",
+      resources: {
+        instances: {
+          methods: {
+            list: {
+              id: "compute.instances.list",
+              httpMethod: "GET",
+              path: "projects/{project}/zones/{zone}/instances",
+            },
+          },
+        },
+      },
+    };
+    const text = trimDocs(compute, "instances.list");
+    const base = text.match(/Base URL: (\S+)/)?.[1];
+    const path = text.match(/compute\.instances\.list — GET (\S+)/)?.[1];
+    expect(`${base}${path}`).toBe(
+      "https://compute.googleapis.com/compute/v1/projects/{project}/zones/{zone}/instances",
+    );
+    expect(text).toContain('service "compute" and path = the path below as printed');
+  });
+
   test("no match is said", () => {
     expect(trimDocs(DNS, "nothing-like-this")).toContain('No method matches "nothing-like-this"');
   });

@@ -50,6 +50,9 @@ describe("names", () => {
     expect(fqdn("@", "shop.example.")).toBe("shop.example.");
     expect(fqdn("www.shop.example", "shop.example.")).toBe("www.shop.example.");
     expect(fqdn("www.shop.example.", "shop.example.")).toBe("www.shop.example.");
+    expect(fqdn("shop.example", "shop.example.")).toBe("shop.example.");
+    // Ends with the zone's text but is not inside the zone: it is relative.
+    expect(fqdn("fooshop.example", "shop.example.")).toBe("fooshop.example.shop.example.");
   });
 });
 
@@ -179,6 +182,10 @@ describe("DNS reads", () => {
           }),
       },
       {
+        url: /managedZones\/shop$/,
+        answer: () => json({ name: "shop", dnsName: "shop.example." }),
+      },
+      {
         url: /rrsets/,
         answer: () =>
           json({
@@ -193,11 +200,12 @@ describe("DNS reads", () => {
     expect(
       await fake.callTool("gcloud_dns_records", {
         zone: "shop",
-        name: "www.shop.example",
+        name: "www",
         type: "a",
       }),
     ).toBe("www.shop.example. A 300 1.1.1.1\nshop.example. MX 3600 1 mx., 5 mx2.");
-    const url = new URL(connections.requests[1]?.url ?? "");
+    // [0] zones, [1] the zone (for the relative name), [2] the record sets.
+    const url = new URL(connections.requests[2]?.url ?? "");
     expect(url.pathname).toBe("/dns/v1/projects/shop-prod/managedZones/shop/rrsets");
     expect(url.searchParams.get("name")).toBe("www.shop.example.");
     expect(url.searchParams.get("type")).toBe("A");

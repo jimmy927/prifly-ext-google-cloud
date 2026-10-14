@@ -167,11 +167,15 @@ export type Sleep = (ms: number, signal: AbortSignal) => Promise<void>;
 
 export const realSleep: Sleep = (ms, signal) =>
   new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
+    const onAbort = (): void => {
       clearTimeout(timer);
       resolve();
-    });
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 
 function waitSeconds(value: unknown): number {

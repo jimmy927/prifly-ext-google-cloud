@@ -70,11 +70,21 @@ async function runRecords(ready: Ready, args: Record<string, unknown>): Promise<
   const type = stringArg(args, "type")?.toUpperCase();
   if (type !== undefined && name === undefined)
     return "`type` needs `name` too (Cloud DNS filters by both).";
+  let fullName: string | undefined;
+  if (name !== undefined) {
+    // Read the zone so a relative name (`www`, `@`) means the same as in gcloud_dns_change.
+    const call = { project: ready.project };
+    const found = orSentence(
+      await gfetch<Zone>(ready.connections, ready.connection, zoneBase(ready, zone), call),
+    );
+    if ("sentence" in found) return found.sentence;
+    fullName = fqdn(name, found.value.dnsName ?? "");
+  }
   const answer = orSentence(
     await allPages(
       (token) => {
         const url = new URL(`${zoneBase(ready, zone)}/rrsets`);
-        if (name !== undefined) url.searchParams.set("name", fqdn(name, ""));
+        if (fullName !== undefined) url.searchParams.set("name", fullName);
         if (type !== undefined) url.searchParams.set("type", type);
         if (token !== undefined) url.searchParams.set("pageToken", token);
         return gfetch<RecordsPage>(ready.connections, ready.connection, url.toString(), {
@@ -95,7 +105,11 @@ export const dnsRecordsTool: ToolSpec = {
   perProject: true,
   properties: {
     zone: { type: "string", description: "The managed zone's name (not its DNS name)." },
-    name: { type: "string", description: "Only this DNS name, e.g. www.example.com." },
+    name: {
+      type: "string",
+      description:
+        "Only this DNS name: www.example.com., www (relative to the zone) or @ (the zone's apex).",
+    },
     type: { type: "string", description: "With `name`: only this type, e.g. A, CNAME, TXT." },
   },
   run: runRecords,
@@ -108,7 +122,8 @@ export function fqdn(name: string, zoneDns: string): string {
   const trimmed = name.trim();
   if (trimmed === "@") return zoneDns;
   if (trimmed.endsWith(".")) return trimmed;
-  if (zoneDns === "" || `${trimmed}.`.endsWith(zoneDns)) return `${trimmed}.`;
+  const absolute = `${trimmed}.`;
+  if (zoneDns === "" || absolute === zoneDns || absolute.endsWith(`.${zoneDns}`)) return absolute;
   return `${trimmed}.${zoneDns}`;
 }
 

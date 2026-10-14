@@ -37,7 +37,15 @@ function notConnected(api: HostApi): string | null {
   }
 }
 
-export function startStatus(api: HostApi, everyMs = STATUS_EVERY_MS): StatusLine {
+/** Runs `tick` every `ms` until the returned stop is called; a test passes one it drives itself. */
+export type Every = (tick: () => void, ms: number) => () => void;
+
+const realEvery: Every = (tick, ms) => {
+  const timer = setInterval(tick, ms);
+  return () => clearInterval(timer);
+};
+
+export function startStatus(api: HostApi, every: Every = realEvery): StatusLine {
   let projects: string | null = null;
   let stopped = false;
 
@@ -79,14 +87,14 @@ export function startStatus(api: HostApi, everyMs = STATUS_EVERY_MS): StatusLine
     refresh().catch((error: unknown) => {
       api.log("status_failed", { message: error instanceof Error ? error.message : String(error) });
     });
-  const timer = setInterval(() => void tick(), everyMs);
+  const stopTimer = every(() => void tick(), STATUS_EVERY_MS);
   void tick();
   return {
     refresh: tick,
     redraw,
     stop: () => {
       stopped = true;
-      clearInterval(timer);
+      stopTimer();
     },
   };
 }

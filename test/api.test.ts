@@ -121,6 +121,17 @@ describe("gcloud_api writes", () => {
     expect(connections.requests).toHaveLength(0);
   });
 
+  test("a confirm card that fails is no consent: nothing is sent, and it is said", async () => {
+    const { fake, connections } = setup([{ url: /.*/, answer: () => json({}) }]);
+    fake.api.confirm = async () => {
+      throw new Error("window gone");
+    };
+    expect(await fake.callTool("gcloud_api", { method: "DELETE", url: ZONES })).toBe(
+      "Not done: the confirm card could not be shown (window gone)",
+    );
+    expect(connections.requests).toHaveLength(0);
+  });
+
   test("an unknown method is refused", async () => {
     const { fake, connections } = setup([]);
     expect(await fake.callTool("gcloud_api", { method: "HEAD", url: ZONES })).toContain(

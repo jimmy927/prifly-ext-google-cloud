@@ -41,11 +41,19 @@ export async function confirmedSend(
 ): Promise<Result<Sent> | { cancelled: string }> {
   const confirm = ready.api.confirm;
   if (confirm === undefined) return { cancelled: NO_CONFIRM };
-  const yes = await confirm({
-    title: write.title,
-    summary: write.summary,
-    details: requestText(write.method, write.url, write.body),
-  });
+  let yes: boolean;
+  try {
+    yes = await confirm({
+      title: write.title,
+      summary: write.summary,
+      details: requestText(write.method, write.url, write.body),
+    });
+  } catch (error) {
+    // No answer from the card is no consent: nothing is sent, and the session is told why.
+    const message = error instanceof Error ? error.message : String(error);
+    ready.api.log("confirm_failed", { method: write.method, url: write.url, message });
+    return { cancelled: `Not done: the confirm card could not be shown (${message})` };
+  }
   if (!yes) {
     ready.api.log("write_cancelled", { method: write.method, url: write.url });
     return { cancelled: CANCELLED };

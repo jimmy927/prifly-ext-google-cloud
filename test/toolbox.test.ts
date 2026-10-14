@@ -99,15 +99,27 @@ describe("the status line", () => {
   test("Google is asked again only on the timer", async () => {
     const connections = fakeConnections({ accounts: [CLOUD_ACCOUNT], provider: PROJECTS });
     const fake = fakeApi({ connections: connections.connections, folder: temp() });
-    const status = startStatus(fake.api, 40);
+    let tick: (() => void) | null = null;
+    let every = 0;
+    let stopped = false;
+    const status = startStatus(fake.api, (given, ms) => {
+      tick = given;
+      every = ms;
+      return () => {
+        stopped = true;
+      };
+    });
     await settle();
+    expect(every).toBe(15 * 60 * 1000);
     expect(connections.requests).toHaveLength(1);
     expect(fake.statuses.at(-1)).toBe("Connected · 2 projects · no default project");
-    await new Promise((resolve) => setTimeout(resolve, 45));
+    status.redraw();
+    expect(connections.requests).toHaveLength(1);
+    (tick as (() => void) | null)?.();
+    await settle();
     expect(connections.requests).toHaveLength(2);
     status.stop();
-    await new Promise((resolve) => setTimeout(resolve, 45));
-    expect(connections.requests).toHaveLength(2);
+    expect(stopped).toBe(true);
   });
 
   test("a project list that fails is a short line and a log, not a throw", async () => {

@@ -219,10 +219,10 @@ function cap(text: string): string {
 }
 
 function header(doc: Discovery): string {
-  const base = `${doc.rootUrl ?? ""}${doc.servicePath ?? ""}`;
+  // The paths below already start with `servicePath` (`pathOf`), so the base is `rootUrl` alone.
   return [
     `${doc.title ?? doc.name ?? "API"} ${doc.version ?? ""}`.trim(),
-    `Base URL: ${base} — call gcloud_api with url = base URL + the path below (fill in the {placeholders}), or service "${doc.name ?? "?"}" and path = "${doc.servicePath ?? ""}" + path.`,
+    `Base URL: ${doc.rootUrl ?? ""} — call gcloud_api with url = base URL + the path below (fill in the {placeholders}), or service "${doc.name ?? "?"}" and path = the path below as printed.`,
   ].join("\n");
 }
 
