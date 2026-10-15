@@ -42,7 +42,8 @@ async function runEnable(ready: Ready, args: Record<string, unknown>): Promise<s
     body: disable ? { disableDependentServices: false } : {},
     project: ready.project,
     title: disable ? "Disable a Google Cloud API" : "Enable a Google Cloud API",
-    summary: `${disable ? "Disable" : "Enable"} ${service} in project ${ready.project}`,
+    summary: `${disable ? "Disable" : "Enable"} the ${service} API in project ${ready.project}.`,
+    content: `API: ${service}\nProject: ${ready.project}\nAction: ${disable ? "Disable" : "Enable"}`,
   });
   if ("cancelled" in answer) return answer.cancelled;
   const result = orSentence(answer);

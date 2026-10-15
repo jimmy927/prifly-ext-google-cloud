@@ -80,7 +80,12 @@ describe("gcloud_api writes", () => {
       const card = fake.confirms[0];
       expect(card?.details).toStartWith(`${method} ${ZONES}/zone-a`);
       if (body !== undefined) expect(card?.details).toContain('"description": "new"');
-      expect(card?.summary).toContain(method);
+      // The sentence and the plain-text part say it in words; URL and JSON stay in Details.
+      expect(card?.summary).toContain("managed zone zone-a in project shop-prod");
+      expect(card?.summary).not.toContain("http");
+      expect(card?.content).toContain("Resource: managed zone zone-a");
+      expect(card?.content).toContain("Project: shop-prod");
+      expect(card?.content).not.toContain("http");
       expect(text).toStartWith(`200 ${method} `);
       expect(connections.requests).toHaveLength(1);
       expect(connections.requests[0]?.method).toBe(method);
@@ -189,7 +194,13 @@ describe("curated writes confirm too", () => {
       { method: "POST", url: /:disable$/, answer: () => json({ name: "operations/acf.p2-1" }) },
     ]);
     const text = await fake.callTool("gcloud_enable_api", { service: "dns", disable: true });
-    expect(fake.confirms[0]?.summary).toBe("Disable dns.googleapis.com in project shop-prod");
+    expect(fake.confirms[0]?.summary).toBe(
+      "Disable the dns.googleapis.com API in project shop-prod.",
+    );
+    expect(fake.confirms[0]?.content).toBe(
+      "API: dns.googleapis.com\nProject: shop-prod\nAction: Disable",
+    );
+    expect(fake.confirms[0]?.details).toContain('"disableDependentServices": false');
     expect(text).toContain(
       'operation: "https://serviceusage.googleapis.com/v1/operations/acf.p2-1"',
     );

@@ -80,6 +80,69 @@ function quotaProject(url: URL, ready: Ready, args: Record<string, unknown>): st
   return chosen === "" ? undefined : chosen;
 }
 
+const VERBS: Record<Exclude<Method, "GET">, string> = {
+  POST: "Create or run",
+  PUT: "Replace",
+  PATCH: "Update",
+  DELETE: "Delete",
+};
+
+/** `managedZones` → `managed zone`, `policies` → `policy`. */
+function singular(collection: string): string {
+  const words = collection
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/ies$/, "y")
+    .replace(/(s|x|ch|sh)es$/, "$1")
+    .replace(/s$/, "");
+  return words;
+}
+
+/**
+ * The call in words, when the path allows it: `/dns/v1/projects/p/managedZones/z`
+ * with PATCH is "Update the managed zone z in project p". Null when the path
+ * does not read as collection/name pairs.
+ */
+export function describeCall(
+  method: Exclude<Method, "GET">,
+  url: URL,
+  project: string | undefined,
+): { summary: string; content: string } | null {
+  const segments = url.pathname.split("/").filter(Boolean);
+  const version = segments.findIndex((each) => /^v\d+[a-z0-9]*$/.test(each));
+  let rest = segments.slice(version + 1);
+  const projectAt = rest[0] === "projects" ? 1 : -1;
+  const inProject = projectAt === 1 ? rest[1] : project;
+  if (projectAt === 1) rest = rest.slice(2);
+  const last = rest.at(-1);
+  if (last === undefined) return null;
+  const colon = last.indexOf(":");
+  const custom = colon === -1 ? undefined : last.slice(colon + 1);
+  if (colon !== -1) rest = [...rest.slice(0, -1), last.slice(0, colon)].filter(Boolean);
+  if (rest.length === 0) return null;
+  const decoded = rest.map((each) => decodeURIComponent(each));
+  let resource: string;
+  if (decoded.length % 2 === 0) {
+    const collection = decoded.at(-2) ?? "";
+    resource = `${singular(collection)} ${decoded.at(-1)}`;
+  } else {
+    resource = `new ${singular(decoded.at(-1) ?? "")}`;
+  }
+  const where = inProject === undefined ? "" : ` in project ${inProject}`;
+  const action = custom === undefined ? VERBS[method] : `${VERBS[method]} (${custom})`;
+  const sentence =
+    custom === undefined
+      ? `${VERBS[method]} the ${resource}${where}.`
+      : `Run "${custom}" on the ${resource}${where}.`;
+  const content = [
+    `Action: ${action}`,
+    `Resource: ${resource}`,
+    ...(inProject === undefined ? [] : [`Project: ${inProject}`]),
+    `API: ${url.hostname}`,
+  ].join("\n");
+  return { summary: sentence, content };
+}
+
 function methodOf(value: unknown): Method | null {
   const method = typeof value === "string" ? value.trim().toUpperCase() : "GET";
   return (METHODS as readonly string[]).includes(method) ? (method as Method) : null;
@@ -87,6 +150,20 @@ function methodOf(value: unknown): Method | null {
 
 function show(body: unknown): string {
   return typeof body === "string" ? body : JSON.stringify(body, null, 2);
+}
+
+/** The confirm card's words for a generic write: title, a sentence, and the gist when one can be derived. */
+function cardOf(
+  method: Exclude<Method, "GET">,
+  url: URL,
+  project: string | undefined,
+): { title: string; summary: string; content?: string } {
+  const gist = describeCall(method, url, project);
+  return {
+    title: `Google Cloud: ${method} ${url.hostname.replace(/\.googleapis\.com$/, "")}`,
+    summary: gist?.summary ?? `Send a ${method} request to ${url.hostname}; see Details.`,
+    ...(gist === null ? {} : { content: gist.content }),
+  };
 }
 
 async function runApi(ready: Ready, args: Record<string, unknown>): Promise<string> {
@@ -108,8 +185,7 @@ async function runApi(ready: Ready, args: Record<string, unknown>): Promise<stri
           url,
           ...(body === undefined ? {} : { body }),
           ...(project === undefined ? {} : { project }),
-          title: `Google Cloud: ${method} ${built.url.hostname.replace(/\.googleapis\.com$/, "")}`,
-          summary: `${method} ${built.url.hostname}${built.url.pathname}`,
+          ...cardOf(method, built.url, project),
         });
   if ("cancelled" in answer) return answer.cancelled;
   const result = orSentence(answer);

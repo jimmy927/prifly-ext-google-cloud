@@ -85,10 +85,19 @@ describe("gcloud_dns_change", () => {
     expect(posted).toEqual([body]);
     expect(fake.confirms).toHaveLength(1);
     expect(fake.confirms[0]?.title).toBe("Add a DNS record");
-    expect(fake.confirms[0]?.summary).toBe("Add api.shop.example. A 300 3.3.3.3 in zone shop");
-    expect(fake.confirms[0]?.details).toBe(
-      `POST ${BASE}/changes\n\n${JSON.stringify(body, null, 2)}`,
+    const card = fake.confirms[0];
+    // One plain sentence: no URL, no JSON, no line breaks.
+    expect(card?.summary).toBe(
+      "Add an A record for api.shop.example. pointing to 3.3.3.3 in zone shop.",
     );
+    expect(card?.summary).not.toMatch(/https?:|[{}\n]/);
+    // The record is in plain text in `content`.
+    expect(card?.content).toBe(
+      "Zone: shop\n\nNew record\nName: api.shop.example.\nType: A\nTTL: 300 seconds\nValue: 3.3.3.3",
+    );
+    expect(card?.content).not.toMatch(/https?:|[{}]/);
+    // The request, URL and JSON body, is only in `details`.
+    expect(card?.details).toBe(`POST ${BASE}/changes\n\n${JSON.stringify(body, null, 2)}`);
     expect(text).toContain("Change 42 in zone shop: pending.");
     expect(text).toContain(`gcloud_wait_operation, operation: "${BASE}/changes/42"`);
     expect(connections.options.every((each) => each?.project === "shop-prod")).toBe(true);

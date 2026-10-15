@@ -154,12 +154,49 @@ function ttlOf(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 300;
 }
 
+/** "an A", "a CNAME": by how the type's first letter is said aloud. */
+function withArticle(type: string): string {
+  return `${/^[AEFHILMNORSX]/.test(type) ? "an" : "a"} ${type}`;
+}
+
+/** `an A record for www.example.com. pointing to 1.2.3.4`, a part of a sentence. */
+function recordPhrase(each: RecordSet): string {
+  const link = ["A", "AAAA", "CNAME"].includes(each.type) ? "pointing to" : "with data";
+  return `${withArticle(each.type)} record for ${each.name} ${link} ${(each.rrdatas ?? []).join(", ")}`;
+}
+
+/** One plain sentence, no URL or JSON: what the change will do. */
 function summaryOf(action: Action, zone: string, existing?: RecordSet, wanted?: RecordSet): string {
   if (action === "create" && wanted !== undefined)
-    return `Add ${recordLine(wanted)} in zone ${zone}`;
+    return `Add ${recordPhrase(wanted)} in zone ${zone}.`;
   if (action === "delete" && existing !== undefined)
-    return `Delete ${recordLine(existing)} from zone ${zone}`;
-  return `In zone ${zone}, replace ${existing === undefined ? "?" : recordLine(existing)} with ${wanted === undefined ? "?" : recordLine(wanted)}`;
+    return `Delete ${recordPhrase(existing)} from zone ${zone}.`;
+  return `In zone ${zone}, replace ${existing === undefined ? "?" : recordPhrase(existing)} with ${wanted === undefined ? "?" : recordPhrase(wanted)}.`;
+}
+
+function recordBlock(each: RecordSet): string {
+  const values = each.rrdatas ?? [];
+  return [
+    `Name: ${each.name}`,
+    `Type: ${each.type}`,
+    `TTL: ${each.ttl ?? "?"} seconds`,
+    values.length === 1
+      ? `Value: ${values[0]}`
+      : `Values:\n${values.map((v) => `  ${v}`).join("\n")}`,
+  ].join("\n");
+}
+
+/** The card's plain-text part: the record(s) being added, deleted or replaced. */
+function contentOf(action: Action, zone: string, existing?: RecordSet, wanted?: RecordSet): string {
+  const parts = [`Zone: ${zone}`];
+  if (action === "create" && wanted !== undefined) parts.push(`New record\n${recordBlock(wanted)}`);
+  else if (action === "delete" && existing !== undefined)
+    parts.push(`Record to delete\n${recordBlock(existing)}`);
+  else {
+    if (existing !== undefined) parts.push(`Current record (deleted)\n${recordBlock(existing)}`);
+    if (wanted !== undefined) parts.push(`New record (added)\n${recordBlock(wanted)}`);
+  }
+  return parts.join("\n\n");
 }
 
 type ChangeInput = { action: Action; zone: string; name: string; type: string; wanted?: RecordSet };
@@ -214,12 +251,13 @@ async function runChange(ready: Ready, args: Record<string, unknown>): Promise<s
           ? "Delete a DNS record"
           : "Change a DNS record",
     summary: summaryOf(input.action, input.zone, existing, wanted),
+    content: contentOf(input.action, input.zone, existing, wanted),
   });
   if ("cancelled" in answer) return answer.cancelled;
   const result = orSentence(answer);
   if ("sentence" in result) return result.sentence;
   const change = result.value.body as Change;
-  return `Change ${change.id ?? "?"} in zone ${input.zone}: ${change.status ?? "?"}. ${summaryOf(input.action, input.zone, existing, wanted)}.${waitHint(change, url)}`;
+  return `Change ${change.id ?? "?"} in zone ${input.zone}: ${change.status ?? "?"}. ${summaryOf(input.action, input.zone, existing, wanted)}${waitHint(change, url)}`;
 }
 
 export const dnsChangeTool: ToolSpec = {
