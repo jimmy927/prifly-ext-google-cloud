@@ -118,6 +118,32 @@ describe("gcloud_api writes", () => {
     expect(connections.requests).toHaveLength(0);
   });
 
+  test("a path that does not read as one resource gets the plain fallback, never a wrong gist", async () => {
+    const rrset = `${ZONES}/z/rrsets/www.shop.example./A`;
+    const { fake } = setup([{ url: /.*/, answer: () => json({}) }]);
+    await fake.callTool("gcloud_api", { method: "DELETE", url: rrset });
+    const card = fake.confirms[0];
+    expect(card?.summary).toBe("Send a DELETE request to dns.googleapis.com; see Details.");
+    expect(card?.content).toBeUndefined();
+    expect(card?.details).toStartWith(`DELETE ${rrset}`);
+  });
+
+  test("a malformed escape in the path does not crash the card", async () => {
+    const { fake } = setup([{ url: /.*/, answer: () => json({}) }]);
+    await fake.callTool("gcloud_api", { method: "DELETE", url: `${ZONES}/100%zz` });
+    expect(fake.confirms[0]?.summary).toBe(
+      "Send a DELETE request to dns.googleapis.com; see Details.",
+    );
+  });
+
+  test("a POST to a collection reads as creating a new one", async () => {
+    const { fake } = setup([{ url: /.*/, answer: () => json({}) }]);
+    await fake.callTool("gcloud_api", { method: "POST", url: ZONES, body: {} });
+    expect(fake.confirms[0]?.summary).toBe(
+      "Create or run the new managed zone in project shop-prod.",
+    );
+  });
+
   test("without api.confirm (an older prifly) nothing is sent", async () => {
     const { fake, connections } = setup([{ url: /.*/, answer: () => json({}) }], {
       confirm: null,

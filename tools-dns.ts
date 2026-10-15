@@ -162,7 +162,8 @@ function withArticle(type: string): string {
 /** `an A record for www.example.com. pointing to 1.2.3.4`, a part of a sentence. */
 function recordPhrase(each: RecordSet): string {
   const link = ["A", "AAAA", "CNAME"].includes(each.type) ? "pointing to" : "with data";
-  return `${withArticle(each.type)} record for ${each.name} ${link} ${(each.rrdatas ?? []).join(", ")}`;
+  const data = (each.rrdatas ?? []).join(", ");
+  return `${withArticle(each.type)} record for ${each.name}${data === "" ? "" : ` ${link} ${data}`}`;
 }
 
 /** One plain sentence, no URL or JSON: what the change will do. */

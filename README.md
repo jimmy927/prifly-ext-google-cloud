@@ -7,8 +7,8 @@ CLI. You ask in plain words ("add an A record for www pointing at 1.2.3.4",
 
 - Reads run at once. Every write (any call that is not a GET) first shows a
   confirm card: one sentence on what will happen, the record or API in plain
-  text, and the method, URL and JSON body folded under Details; Cancel sends nothing and the
-  tool answers "Not done: you cancelled".
+  text, and the method, URL and JSON body folded under Details; Cancel sends
+  nothing and the tool answers "Not done: you cancelled".
 - No launcher, board, chip or panel. The one thing it shows is a status line
   in Settings → Extensions: "Connected · 7 projects · default shop-prod",
   read again at most every 15 minutes.

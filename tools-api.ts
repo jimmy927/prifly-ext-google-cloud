@@ -93,9 +93,27 @@ function singular(collection: string): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .replace(/ies$/, "y")
-    .replace(/(s|x|ch|sh)es$/, "$1")
+    .replace(/(x|ch|sh|ss)es$/, "$1")
     .replace(/s$/, "");
   return words;
+}
+
+/**
+ * The resource in words, from one `collection/name` pair, or `new <collection>`
+ * for a POST to a collection. Null for anything longer or odd (a middle zone or
+ * location would be hidden), a malformed escape, or a non-POST on a collection.
+ */
+function resourceOf(rest: string[], method: Method, custom: string | undefined): string | null {
+  let decoded: string[];
+  try {
+    decoded = rest.map((each) => decodeURIComponent(each));
+  } catch {
+    return null;
+  }
+  if (decoded.length === 2) return `${singular(decoded[0] ?? "")} ${decoded[1]}`;
+  if (decoded.length === 1 && method === "POST" && custom === undefined)
+    return `new ${singular(decoded[0] ?? "")}`;
+  return null;
 }
 
 /**
@@ -120,14 +138,8 @@ export function describeCall(
   const custom = colon === -1 ? undefined : last.slice(colon + 1);
   if (colon !== -1) rest = [...rest.slice(0, -1), last.slice(0, colon)].filter(Boolean);
   if (rest.length === 0) return null;
-  const decoded = rest.map((each) => decodeURIComponent(each));
-  let resource: string;
-  if (decoded.length % 2 === 0) {
-    const collection = decoded.at(-2) ?? "";
-    resource = `${singular(collection)} ${decoded.at(-1)}`;
-  } else {
-    resource = `new ${singular(decoded.at(-1) ?? "")}`;
-  }
+  const resource = resourceOf(rest, method, custom);
+  if (resource === null) return null;
   const where = inProject === undefined ? "" : ` in project ${inProject}`;
   const action = custom === undefined ? VERBS[method] : `${VERBS[method]} (${custom})`;
   const sentence =
