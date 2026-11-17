@@ -5,6 +5,10 @@ CLI. You ask in plain words ("add an A record for www pointing at 1.2.3.4",
 "why is the api service failing") and the session does it through the
 `gcloud_*` tools, as your own Google account.
 
+![The confirm card prifly shows before a DNS record is changed: a one-sentence summary, the old and new record in plain text, a folded Details block, and Cancel and Confirm buttons](docs/screenshot.png)
+
+The confirm card for a DNS change, with example data.
+
 - Reads run at once. Every write (any call that is not a GET) first shows a
   confirm card: one sentence on what will happen, the record or API in plain
   text, and the method, URL and JSON body folded under Details; Cancel sends
