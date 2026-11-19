@@ -17,6 +17,13 @@ import type { ExtensionConnection, ExtensionConnectionsApi } from "@prifly/exten
 
 export const CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform";
 
+/**
+ * How long `gcloud_connect` waits for the reader to finish Google's consent
+ * page. Without a limit, a consent tab that is closed or ends on an error
+ * keeps the tool call (and the session waiting on it) running forever.
+ */
+export const CONSENT_TIMEOUT_MS = 5 * 60_000;
+
 /** Where the reader stands with Google, for the tools and the status line. */
 export type Standing =
   | { kind: "no-api" }
@@ -62,10 +69,12 @@ export function sayStanding(state: Standing): string | null {
 /**
  * Ask for `cloud-platform`: on the account the reader connected already
  * when there is one (incremental consent, also how an ended grant is
- * revived), else a new Google account.
+ * revived), else a new Google account. Gives up after `timeoutMs` when the
+ * reader never finishes the consent page.
  */
 export async function allowCloud(
   connections: ExtensionConnectionsApi | undefined,
+  timeoutMs = CONSENT_TIMEOUT_MS,
 ): Promise<{ ok: true; account: string } | { ok: false; message: string }> {
   if (connections === undefined) return { ok: false, message: "This prifly has no connections." };
   const state = standing(connections);
@@ -73,6 +82,24 @@ export async function allowCloud(
     state.kind === "no-scope" || state.kind === "needs-sign-in" || state.kind === "ok"
       ? { connection: state.connection.id }
       : undefined;
-  const answer = await connections.signIn("google", [CLOUD_PLATFORM], options);
-  return answer.ok ? { ok: true, account: answer.account } : answer;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<{ ok: false; message: string }>((resolve) => {
+    timer = setTimeout(
+      () =>
+        resolve({
+          ok: false,
+          message: `the consent page was not completed within ${Math.max(1, Math.round(timeoutMs / 60_000))} minutes. Ask the reader whether to try again; do not retry on your own.`,
+        }),
+      timeoutMs,
+    );
+  });
+  try {
+    const answer = await Promise.race([
+      connections.signIn("google", [CLOUD_PLATFORM], options),
+      timedOut,
+    ]);
+    return answer.ok ? { ok: true, account: answer.account } : answer;
+  } finally {
+    clearTimeout(timer);
+  }
 }
