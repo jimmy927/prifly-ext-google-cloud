@@ -191,6 +191,16 @@ describe("standing", () => {
     expect(fake.accounts[0]?.scopes).toContain(CLOUD_PLATFORM);
     expect(standing(fake.connections).kind).toBe("ok");
   });
+
+  test("allowCloud gives up when the consent page is never completed", async () => {
+    const fake = fakeConnections({ accounts: [{ ...GMAIL_ONLY_ACCOUNT }] });
+    // The reader never finishes Google's consent page.
+    const connections = { ...fake.connections, signIn: () => new Promise<never>(() => {}) };
+    const answer = await allowCloud(connections, 20);
+    expect(answer.ok).toBe(false);
+    expect(answer.ok ? "" : answer.message).toContain("not completed");
+    expect(standing(fake.connections).kind).toBe("no-scope");
+  });
 });
 
 describe("settings", () => {
